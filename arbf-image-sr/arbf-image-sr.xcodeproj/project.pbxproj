@@ -1,0 +1,369 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		E31C80AB1C277444003C4CBA /* ARBFInterpolator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E31C80A51C276945003C4CBA /* ARBFInterpolator.cpp */; };
+		E31C80AC1C277444003C4CBA /* Config.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E31C80A61C276945003C4CBA /* Config.cpp */; };
+		E31C80AD1C277444003C4CBA /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E31C80A71C276945003C4CBA /* main.cpp */; };
+		E31C80AE1C277444003C4CBA /* PPMImage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E31C80A91C276945003C4CBA /* PPMImage.cpp */; };
+		E31C80AF1C277444003C4CBA /* TriMesh.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E31C80AA1C276945003C4CBA /* TriMesh.cpp */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E31C80481C24A79A003C4CBA /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		E31C804A1C24A79A003C4CBA /* arbf-image-sr */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "arbf-image-sr"; sourceTree = BUILT_PRODUCTS_DIR; };
+		E31C80621C24A7DD003C4CBA /* brain-mr.pgm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "brain-mr.pgm"; sourceTree = "<group>"; };
+		E31C80631C24A7DD003C4CBA /* brain-mr.ppm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "brain-mr.ppm"; sourceTree = "<group>"; };
+		E31C80641C24A7DD003C4CBA /* brain-mr.tri */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "brain-mr.tri"; sourceTree = "<group>"; };
+		E31C80651C24A7DD003C4CBA /* brain-mr_2x.pgm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "brain-mr_2x.pgm"; sourceTree = "<group>"; };
+		E31C80661C24A7DD003C4CBA /* brain-mr_3.5x.pgm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "brain-mr_3.5x.pgm"; sourceTree = "<group>"; };
+		E31C80671C24A7DD003C4CBA /* brain-mr_5x_bicubic.pgm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "brain-mr_5x_bicubic.pgm"; sourceTree = "<group>"; };
+		E31C80681C24A7DD003C4CBA /* breast-mr.pgm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "breast-mr.pgm"; sourceTree = "<group>"; };
+		E31C80691C24A7DD003C4CBA /* breast-mr.ppm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "breast-mr.ppm"; sourceTree = "<group>"; };
+		E31C806A1C24A7DD003C4CBA /* breast-mr.tri */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "breast-mr.tri"; sourceTree = "<group>"; };
+		E31C806B1C24A7DD003C4CBA /* breast-mr_2x.pgm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "breast-mr_2x.pgm"; sourceTree = "<group>"; };
+		E31C806C1C24A7DD003C4CBA /* breast-mr_3.5x.pgm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "breast-mr_3.5x.pgm"; sourceTree = "<group>"; };
+		E31C806D1C24A7DD003C4CBA /* breast-mr_5x_bicubic.pgm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "breast-mr_5x_bicubic.pgm"; sourceTree = "<group>"; };
+		E31C806E1C24A7DD003C4CBA /* heart-ct.pgm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "heart-ct.pgm"; sourceTree = "<group>"; };
+		E31C806F1C24A7DD003C4CBA /* heart-ct.ppm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "heart-ct.ppm"; sourceTree = "<group>"; };
+		E31C80701C24A7DD003C4CBA /* heart-ct.tri */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "heart-ct.tri"; sourceTree = "<group>"; };
+		E31C80711C24A7DD003C4CBA /* heart-ct_2x.pgm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "heart-ct_2x.pgm"; sourceTree = "<group>"; };
+		E31C80721C24A7DD003C4CBA /* heart-ct_3.5x.pgm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "heart-ct_3.5x.pgm"; sourceTree = "<group>"; };
+		E31C80731C24A7DD003C4CBA /* heart-ct_5x_bicubic.pgm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "heart-ct_5x_bicubic.pgm"; sourceTree = "<group>"; };
+		E31C80741C24A7DD003C4CBA /* lena.ppm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = lena.ppm; sourceTree = "<group>"; };
+		E31C80751C24A7DD003C4CBA /* lena_1.off */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = lena_1.off; sourceTree = "<group>"; };
+		E31C80761C24A7DD003C4CBA /* lena_2.off */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = lena_2.off; sourceTree = "<group>"; };
+		E31C80771C24A7DD003C4CBA /* lena_mesh_1.ppm */ = {isa = PBXFileReference; lastKnownFileType = file; path = lena_mesh_1.ppm; sourceTree = "<group>"; };
+		E31C80781C24A7DD003C4CBA /* lena_mesh_2.ppm */ = {isa = PBXFileReference; lastKnownFileType = file; path = lena_mesh_2.ppm; sourceTree = "<group>"; };
+		E31C80791C24A7DD003C4CBA /* lena_seedmap_1.ppm */ = {isa = PBXFileReference; lastKnownFileType = file; path = lena_seedmap_1.ppm; sourceTree = "<group>"; };
+		E31C807A1C24A7DD003C4CBA /* simple.ppm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = simple.ppm; sourceTree = "<group>"; };
+		E31C807B1C24A7DD003C4CBA /* simple.tri */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = simple.tri; sourceTree = "<group>"; };
+		E31C807C1C24A7DD003C4CBA /* simple2.ppm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = simple2.ppm; sourceTree = "<group>"; };
+		E31C807D1C24A7DD003C4CBA /* simple2.tri */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = simple2.tri; sourceTree = "<group>"; };
+		E31C807E1C24A7DD003C4CBA /* simple_meshlab.off */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = simple_meshlab.off; sourceTree = "<group>"; };
+		E31C807F1C24A7DD003C4CBA /* test4ke.off */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = test4ke.off; sourceTree = "<group>"; };
+		E31C809F1C276945003C4CBA /* ARBFInterpolator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ARBFInterpolator.h; sourceTree = "<group>"; };
+		E31C80A01C276945003C4CBA /* Common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Common.h; sourceTree = "<group>"; };
+		E31C80A11C276945003C4CBA /* Config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Config.h; sourceTree = "<group>"; };
+		E31C80A21C276945003C4CBA /* PPMImage.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPMImage.h; sourceTree = "<group>"; };
+		E31C80A31C276945003C4CBA /* TriMesh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TriMesh.h; sourceTree = "<group>"; };
+		E31C80A51C276945003C4CBA /* ARBFInterpolator.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ARBFInterpolator.cpp; sourceTree = "<group>"; };
+		E31C80A61C276945003C4CBA /* Config.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Config.cpp; sourceTree = "<group>"; };
+		E31C80A71C276945003C4CBA /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		E31C80A81C276945003C4CBA /* mesh_parser.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mesh_parser.c; sourceTree = "<group>"; };
+		E31C80A91C276945003C4CBA /* PPMImage.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = PPMImage.cpp; sourceTree = "<group>"; };
+		E31C80AA1C276945003C4CBA /* TriMesh.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = TriMesh.cpp; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E31C80471C24A79A003C4CBA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		E31C80411C24A79A003C4CBA = {
+			isa = PBXGroup;
+			children = (
+				E31C804C1C24A79A003C4CBA /* arbf-image-sr */,
+				E31C804B1C24A79A003C4CBA /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E31C804B1C24A79A003C4CBA /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E31C804A1C24A79A003C4CBA /* arbf-image-sr */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E31C804C1C24A79A003C4CBA /* arbf-image-sr */ = {
+			isa = PBXGroup;
+			children = (
+				E31C80611C24A7DD003C4CBA /* data */,
+				E31C809E1C276945003C4CBA /* include */,
+				E31C80A41C276945003C4CBA /* src */,
+			);
+			path = "arbf-image-sr";
+			sourceTree = "<group>";
+		};
+		E31C80611C24A7DD003C4CBA /* data */ = {
+			isa = PBXGroup;
+			children = (
+				E31C80621C24A7DD003C4CBA /* brain-mr.pgm */,
+				E31C80631C24A7DD003C4CBA /* brain-mr.ppm */,
+				E31C80641C24A7DD003C4CBA /* brain-mr.tri */,
+				E31C80651C24A7DD003C4CBA /* brain-mr_2x.pgm */,
+				E31C80661C24A7DD003C4CBA /* brain-mr_3.5x.pgm */,
+				E31C80671C24A7DD003C4CBA /* brain-mr_5x_bicubic.pgm */,
+				E31C80681C24A7DD003C4CBA /* breast-mr.pgm */,
+				E31C80691C24A7DD003C4CBA /* breast-mr.ppm */,
+				E31C806A1C24A7DD003C4CBA /* breast-mr.tri */,
+				E31C806B1C24A7DD003C4CBA /* breast-mr_2x.pgm */,
+				E31C806C1C24A7DD003C4CBA /* breast-mr_3.5x.pgm */,
+				E31C806D1C24A7DD003C4CBA /* breast-mr_5x_bicubic.pgm */,
+				E31C806E1C24A7DD003C4CBA /* heart-ct.pgm */,
+				E31C806F1C24A7DD003C4CBA /* heart-ct.ppm */,
+				E31C80701C24A7DD003C4CBA /* heart-ct.tri */,
+				E31C80711C24A7DD003C4CBA /* heart-ct_2x.pgm */,
+				E31C80721C24A7DD003C4CBA /* heart-ct_3.5x.pgm */,
+				E31C80731C24A7DD003C4CBA /* heart-ct_5x_bicubic.pgm */,
+				E31C80741C24A7DD003C4CBA /* lena.ppm */,
+				E31C80751C24A7DD003C4CBA /* lena_1.off */,
+				E31C80761C24A7DD003C4CBA /* lena_2.off */,
+				E31C80771C24A7DD003C4CBA /* lena_mesh_1.ppm */,
+				E31C80781C24A7DD003C4CBA /* lena_mesh_2.ppm */,
+				E31C80791C24A7DD003C4CBA /* lena_seedmap_1.ppm */,
+				E31C807A1C24A7DD003C4CBA /* simple.ppm */,
+				E31C807B1C24A7DD003C4CBA /* simple.tri */,
+				E31C807C1C24A7DD003C4CBA /* simple2.ppm */,
+				E31C807D1C24A7DD003C4CBA /* simple2.tri */,
+				E31C807E1C24A7DD003C4CBA /* simple_meshlab.off */,
+				E31C807F1C24A7DD003C4CBA /* test4ke.off */,
+			);
+			path = data;
+			sourceTree = "<group>";
+		};
+		E31C809E1C276945003C4CBA /* include */ = {
+			isa = PBXGroup;
+			children = (
+				E31C809F1C276945003C4CBA /* ARBFInterpolator.h */,
+				E31C80A01C276945003C4CBA /* Common.h */,
+				E31C80A11C276945003C4CBA /* Config.h */,
+				E31C80A21C276945003C4CBA /* PPMImage.h */,
+				E31C80A31C276945003C4CBA /* TriMesh.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		E31C80A41C276945003C4CBA /* src */ = {
+			isa = PBXGroup;
+			children = (
+				E31C80A51C276945003C4CBA /* ARBFInterpolator.cpp */,
+				E31C80A61C276945003C4CBA /* Config.cpp */,
+				E31C80A71C276945003C4CBA /* main.cpp */,
+				E31C80A81C276945003C4CBA /* mesh_parser.c */,
+				E31C80A91C276945003C4CBA /* PPMImage.cpp */,
+				E31C80AA1C276945003C4CBA /* TriMesh.cpp */,
+			);
+			path = src;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E31C80491C24A79A003C4CBA /* arbf-image-sr */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E31C80511C24A79A003C4CBA /* Build configuration list for PBXNativeTarget "arbf-image-sr" */;
+			buildPhases = (
+				E31C80461C24A79A003C4CBA /* Sources */,
+				E31C80471C24A79A003C4CBA /* Frameworks */,
+				E31C80481C24A79A003C4CBA /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "arbf-image-sr";
+			productName = "arbf-image-sr";
+			productReference = E31C804A1C24A79A003C4CBA /* arbf-image-sr */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E31C80421C24A79A003C4CBA /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0720;
+				ORGANIZATIONNAME = bimos.uwm.edu;
+				TargetAttributes = {
+					E31C80491C24A79A003C4CBA = {
+						CreatedOnToolsVersion = 7.2;
+					};
+				};
+			};
+			buildConfigurationList = E31C80451C24A79A003C4CBA /* Build configuration list for PBXProject "arbf-image-sr" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = E31C80411C24A79A003C4CBA;
+			productRefGroup = E31C804B1C24A79A003C4CBA /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E31C80491C24A79A003C4CBA /* arbf-image-sr */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E31C80461C24A79A003C4CBA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E31C80AB1C277444003C4CBA /* ARBFInterpolator.cpp in Sources */,
+				E31C80AC1C277444003C4CBA /* Config.cpp in Sources */,
+				E31C80AD1C277444003C4CBA /* main.cpp in Sources */,
+				E31C80AE1C277444003C4CBA /* PPMImage.cpp in Sources */,
+				E31C80AF1C277444003C4CBA /* TriMesh.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		E31C804F1C24A79A003C4CBA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = /opt/local/include;
+				LIBRARY_SEARCH_PATHS = /opt/local/lib;
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		E31C80501C24A79A003C4CBA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = /opt/local/include;
+				LIBRARY_SEARCH_PATHS = /opt/local/lib;
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		E31C80521C24A79A003C4CBA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/local/lib,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		E31C80531C24A79A003C4CBA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					/opt/local/lib,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		E31C80451C24A79A003C4CBA /* Build configuration list for PBXProject "arbf-image-sr" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E31C804F1C24A79A003C4CBA /* Debug */,
+				E31C80501C24A79A003C4CBA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E31C80511C24A79A003C4CBA /* Build configuration list for PBXNativeTarget "arbf-image-sr" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E31C80521C24A79A003C4CBA /* Debug */,
+				E31C80531C24A79A003C4CBA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E31C80421C24A79A003C4CBA /* Project object */;
+}

@@ -1,0 +1,20 @@
+# A box with eight vertices in 2D, no attributes, one boundary marker.
+#
+#  Licensing:
+#
+#    This code is distributed under the GNU LGPL license.
+#
+#  Modified:
+#
+#    03 June 2012
+#
+8 2 0 0
+# Outer box has these vertices:
+1 0 0 0
+2 0 3 0
+3 3 0 0
+4 3 3 0
+5 1 1 0
+6 1 2 0
+7 2 1 0
+8 2 2 0

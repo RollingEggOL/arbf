@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <FileRef
+      location = "group:arbf-test/arbf-test.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:arbf-image/arbf-image.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:arbf-image-sr/arbf-image-sr.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:arbf-image-cuda/arbf-image-cuda.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:generate-mesh/generate-mesh.xcodeproj">
+   </FileRef>
+</Workspace>
