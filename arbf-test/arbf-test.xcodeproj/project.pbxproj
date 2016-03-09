@@ -13,6 +13,7 @@
 		E377519D1C7805E7004A451F /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E37751971C7805E7004A451F /* main.cpp */; };
 		E377519F1C7805E7004A451F /* PPMImage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E37751991C7805E7004A451F /* PPMImage.cpp */; };
 		E37751A01C7805E7004A451F /* TriMesh.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E377519A1C7805E7004A451F /* TriMesh.cpp */; };
+		E3BD6A8A1C88C24C00337146 /* RawivImage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E31194431C868FDD00C7F754 /* RawivImage.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -31,7 +32,6 @@
 		E31194421C868FBC00C7F754 /* RawivImage.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RawivImage.h; sourceTree = "<group>"; };
 		E31194431C868FDD00C7F754 /* RawivImage.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RawivImage.cpp; sourceTree = "<group>"; };
 		E35203CF1C84EF0A00D25D0E /* tetrahedron.off */ = {isa = PBXFileReference; lastKnownFileType = text; path = tetrahedron.off; sourceTree = "<group>"; };
-		E35203D01C85208B00D25D0E /* sample.ply */ = {isa = PBXFileReference; lastKnownFileType = text; path = sample.ply; sourceTree = "<group>"; };
 		E35203D11C85469500D25D0E /* tetrahedron.tri */ = {isa = PBXFileReference; lastKnownFileType = text; path = tetrahedron.tri; sourceTree = "<group>"; };
 		E35203D21C85555F00D25D0E /* PLYImage.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PLYImage.cpp; sourceTree = "<group>"; };
 		E35203D41C85556600D25D0E /* PLYImage.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PLYImage.h; sourceTree = "<group>"; };
@@ -47,7 +47,6 @@
 		E37751951C7805E7004A451F /* ARBFInterpolator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ARBFInterpolator.cpp; sourceTree = "<group>"; };
 		E37751961C7805E7004A451F /* Config.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Config.cpp; sourceTree = "<group>"; };
 		E37751971C7805E7004A451F /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
-		E37751981C7805E7004A451F /* mesh_parser.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = mesh_parser.c; sourceTree = "<group>"; };
 		E37751991C7805E7004A451F /* PPMImage.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PPMImage.cpp; sourceTree = "<group>"; };
 		E377519A1C7805E7004A451F /* TriMesh.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TriMesh.cpp; sourceTree = "<group>"; };
 		E37751A11C780C5E004A451F /* box.tri */ = {isa = PBXFileReference; lastKnownFileType = text; path = box.tri; sourceTree = "<group>"; };
@@ -110,7 +109,6 @@
 				E37751951C7805E7004A451F /* ARBFInterpolator.cpp */,
 				E37751961C7805E7004A451F /* Config.cpp */,
 				E37751971C7805E7004A451F /* main.cpp */,
-				E37751981C7805E7004A451F /* mesh_parser.c */,
 				E37751991C7805E7004A451F /* PPMImage.cpp */,
 				E35203D21C85555F00D25D0E /* PLYImage.cpp */,
 				E31194431C868FDD00C7F754 /* RawivImage.cpp */,
@@ -122,7 +120,6 @@
 		E377518C1C780530004A451F /* data */ = {
 			isa = PBXGroup;
 			children = (
-				E35203D01C85208B00D25D0E /* sample.ply */,
 				E35203D11C85469500D25D0E /* tetrahedron.tri */,
 				E35203CF1C84EF0A00D25D0E /* tetrahedron.off */,
 				E37751A11C780C5E004A451F /* box.tri */,
@@ -189,6 +186,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E3BD6A8A1C88C24C00337146 /* RawivImage.cpp in Sources */,
 				E377519B1C7805E7004A451F /* ARBFInterpolator.cpp in Sources */,
 				E35203D31C85555F00D25D0E /* PLYImage.cpp in Sources */,
 				E377519C1C7805E7004A451F /* Config.cpp in Sources */,
