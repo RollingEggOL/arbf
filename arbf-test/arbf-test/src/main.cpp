@@ -17,7 +17,7 @@
 #include "../include/Config.h"
 #include "../include/Common.h"
 #include "../include/PPMImage.h"
-#include "../include/PLYImage.h"
+#include "../include/RawivImage.h"
 #include "../include/TriMesh.h"
 #include "../include/ARBFInterpolator.h"
 
@@ -146,33 +146,34 @@ int main(int argc, const char * argv[])
         output->setImageData(get<0>(result));
         output->write();
     } else {
-        PLYImage* output = new PLYImage(get<2>(result), get<3>(result), get<4>(result));
-        output->setMaxIntensity(get<1>(result));
-        string output_path = PROJ_DIR + "output3D.ply";
+        int dim[] = { get<2>(result), get<3>(result), get<4>(result) };
+        float min[] = {
+            (float) mesh->getMinX(),
+            (float) mesh->getMinY(),
+            (float) mesh->getMinZ()
+        };
+        float max[] = {
+            (float) mesh->getMaxX(),
+            (float) mesh->getMaxY(),
+            (float) mesh->getMaxZ() };
+        RawivImage* output = new RawivImage(dim, min, max);
+        string output_path = PROJ_DIR + "output.rawiv";
         output->setPath(output_path.c_str());
-        output->setImageData(get<0>(result));
-        output->write();
         
-        const int NUM_PPMs = 10;
-        int step = get<4>(result) / NUM_PPMs;
-        double *outData = new double[get<2>(result) * get<3>(result)];
+        float *data = new float[dim[0]*dim[1]*dim[2]];
         
-        for (int k = 0; k < get<4>(result); k += step) {
-            for (int j = 0; j < get<3>(result); j++) {
-                for (int i = 0; i < get<2>(result); i++) {
-                    outData[j*get<2>(result)+i] = get<0>(result)[k*get<3>(result)*get<2>(result) + j*get<2>(result) + i];
+        for (int k = 0; k < dim[2]; k++) {
+            for (int j = 0; j < dim[1]; j++) {
+                for (int i = 0; i < dim[0]; i++) {
+                    data[k*dim[1]*dim[0] + j*dim[0] + i] = (float) get<0>(result)[k*dim[1]*dim[0] + j*dim[0] + i];
                 }
             }
-            
-            PPMImage *out = new PPMImage(get<2>(result), get<3>(result));
-            out->setMaxIntensity(get<1>(result));
-            string outPath = PROJ_DIR + "output3D_z" + to_string(k) + ".ppm";
-            out->setPath(outPath.c_str());
-            out->setImageData(outData);
-            out->write();
         }
         
-        delete [] outData;
+        output->setImageData(data);
+        output->write();
+        
+        delete [] data;
     }
     
     span = clock() - start;

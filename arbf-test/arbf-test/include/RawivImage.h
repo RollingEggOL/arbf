@@ -21,11 +21,11 @@ public:
     
     /*
      * Create image and allocate memory of \param x * \param y.
-     * \param x: # of columns
-     * \param y: # of rows
-     * \param z: # of levels
+     * \param dim: dimension in X, Y, Z
+     * \param min: minimum coordinates
+     * \param max: maximum coordinates
      */
-    RawivImage(int x, int y, int z);
+    RawivImage(const int dim[3], const float min[3], const float max[3]);
     
     /*
      * Copy constructor
@@ -42,36 +42,14 @@ public:
      */
     RawivImage& operator=(const RawivImage &other);
     
-    int getX() const {
-        return m_x;
+    const int* getDimension() const {
+        return m_dim;
     }
     
-    void setX(int x) {
-        m_x = x;
-    }
-    
-    int getY() const {
-        return m_y;
-    }
-    
-    void setY(int y) {
-        m_y = y;
-    }
-    
-    int getZ() const {
-        return m_z;
-    }
-    
-    void setZ(int z) {
-        m_z = z;
-    }
-    
-    int getMaxIntensity() const {
-        return m_maxRaw;
-    }
-    
-    void setMaxIntensity(int max) {
-        m_maxRaw = max;
+    void setDimension(const int dim[3]) {
+        m_dim[0] = dim[0];
+        m_dim[1] = dim[1];
+        m_dim[2] = dim[2];
     }
     
     const char* getPath() const {
@@ -82,22 +60,24 @@ public:
         m_path = std::string(path);
     }
     
-    double* getImageData() const {
+    float* getImageData() const {
         return m_data;
     }
     
-    void setImageData(double *data) {
+    void setImageData(float *data) {
         m_data = data;
     }
     
-    void write() const;
+    void write();
+
+private:
+    void m_swap_buffer(char *buffer, int count, int typesize);
     
 private:
-	double *m_data;
-    int m_x; // # of cols
-    int m_y; // # of rows
-    int m_z; // # of levels
-    double minX
+	float *m_data;
+    int m_dim[3]; // dimension
+    float m_min[3]; // minimum coordinates
+    float m_max[3]; // maximum coordinates
     std::string m_path; // image path
 };
 
