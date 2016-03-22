@@ -309,7 +309,7 @@ void ARBFInterpolator::calculateCenters() {
             return;
         }
         
-        fprintf(fp, "X Y INTENSITY\n");
+        fprintf(fp, "X Y Z INTENSITY\n");
         
         for (int f = 0; f < s_mesh->getNumFaces(); ++f) {
             fprintf(fp, "%lf %lf %lf %lf\n", s_centers[f].x, s_centers[f].y, s_centers[f].z, s_centers[f].intensity);
@@ -320,7 +320,7 @@ void ARBFInterpolator::calculateCenters() {
 }
 
 tuple<double*, double, int, int, int> ARBFInterpolator::interpolate() {
-    const int NP = 1000000; // number of evaluation points
+    const int NP = 29791; // number of evaluation points
     int dimX = 0, dimY = 0, dimZ = 0;
     
     if (Config::dim == 2) {
@@ -376,19 +376,6 @@ tuple<double*, double, int, int, int> ARBFInterpolator::interpolate() {
 //    cout << "\ncoeff = \n" << coeff << "\n" << "-----" << endl;
 //    cout << "\ncoeff.sum() = " << coeff.sum() << endl;
     
-    // assemble evaluation matrix
-//    cout << "\n(rr_min, rr_max) = \n";
-//    double rr_min[NP], rr_max[NP];
-//    for (int i = 0; i < NP; i++) {
-//        rr_min[i] = 999999;
-//        rr_max[i] = -999999;
-//    }
-//    double p1_min[] = {-1, -1}, p1_max[] = {-1, -1};
-
-//    printf("centers = \n");
-//    for (int i = 0; i < s_mesh->getNumFaces(); i++) {
-//        printf("(%lf, %lf),    ", getCenters()[i].x, getCenters()[i].y);
-//    }
     if (Config::dim == 2) {
         for (int j = 0; j < dimY; j++) {
             for (int i = 0; i < dimX; i++) {
@@ -412,24 +399,9 @@ tuple<double*, double, int, int, int> ARBFInterpolator::interpolate() {
                     }
                     
                     double r = s_computeDistance(p0, p1);
-                    //                if (r < rr_min[j*dimX+i]) {
-                    //                    rr_min[j*dimX+i] = r;
-                    //                    p1_min[0] = p1[0];
-                    //                    p1_min[1] = p1[1];
-                    //                }
-                    //                if (r > rr_max[j*dimX+i]) {
-                    //                    rr_max[j*dimX+i] = r;
-                    //                    p1_max[0] = p1[0];
-                    //                    p1_max[1] = p1[1];
-                    //                }
                     intensity += (s_phi(r) * coeff(l));
                 }
                 intensities[j*dimX+i] = intensity;
-                
-                //            if ((i == 2 && j == 0) || (i == 2 && j == 3)) {
-                //                printf("\n@[%d,%d]: p0 = (%lf, %lf), p1_min = (%lf, %lf), rr_min = %lf, p1_max(%lf, %lf), rr_max = %lf\n",
-                //                       i, j, p0[0], p0[1], p1_min[0], p1_min[1], rr_min[j*dimX+i], p1_max[0], p1_max[1], rr_max[j*dimX+i]);
-                //            }
             }
         }
     } else {
@@ -464,14 +436,48 @@ tuple<double*, double, int, int, int> ARBFInterpolator::interpolate() {
         }
     }
     
-//    cout << "\nintensity before rescale = \n";
-//    for (int j = 0; j < dimY; j++) {
-//        for (int i = 0; i < dimX; i++) {
-//            cout << (int) round(intensities[j*dimX+i]) << " ";
-//        }
-//        cout << "\n";
-//    }
-//    cout << "\n" << "-----" << endl;
+    cout << "\n----- Intensity at face centers -----\n";
+    for (int k = 0; k < dimZ; k++) {
+        for (int j = 0; j < dimY; j++) {
+            for (int i = 0; i < dimX; i++) {
+                for (int v = 0; v < s_mesh->getNumVertices(); v++) {
+                    if (abs(x[i] - s_mesh->getVertices()[v].x) < 1e-6 &&
+                        abs(y[j] - s_mesh->getVertices()[v].y) < 1e-6 &&
+                        abs(z[k] - s_mesh->getVertices()[v].z) < 1e-6)
+                    {
+                        printf("\tAt vert[%d][%lf, %lf, %lf], intensity[%d, %d, %d][%lf, %lf, %lf] = %lf\n",
+                                v, s_mesh->getVertices()[v].x, s_mesh->getVertices()[v].y, s_mesh->getVertices()[v].z, i, j, k,
+                                x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
+                        break;
+                    }
+                }
+                
+                for (int f = 0; f < s_mesh->getNumFaces(); f++) {
+                    if (abs(x[i] - getCenters()[f].x) < 1e-6 &&
+                        abs(y[j] - getCenters()[f].y) < 1e-6 &&
+                        abs(z[k] - getCenters()[f].z) < 1e-6)
+                    {
+                        printf("\tAt face[%d][%lf, %lf, %lf], intensity[%d, %d, %d][%lf, %lf, %lf] = %lf\n",
+                                f, getCenters()[f].x, getCenters()[f].y, getCenters()[f].z, i, j, k,
+                                x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
+                        break;
+                    }
+                }
+                
+                if (abs(x[i] - (s_mesh->getMinX()+s_mesh->getMaxX())/2.0) < 1e-6 &&
+                    abs(y[j] - (s_mesh->getMinY()+s_mesh->getMaxY())/2.0) < 1e-6 &&
+                    abs(z[k] - (s_mesh->getMinZ()+s_mesh->getMaxZ())/2.0) < 1e-6)
+                {
+                    printf("\tAt center[%lf, %lf, %lf], intensity[%d, %d, %d][%lf, %lf, %lf] = %lf\n",
+                           (s_mesh->getMinX()+s_mesh->getMaxX())/2.0,
+                           (s_mesh->getMinY()+s_mesh->getMaxY())/2.0,
+                           (s_mesh->getMinZ()+s_mesh->getMaxZ())/2.0, i, j, k,
+                           x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
+                }
+            }
+        }
+    }
+    cout << "\n" << "-----" << endl;
     
     // rescale to [0, 255]
     for (int i = 0; i < NP; i++) {
@@ -484,12 +490,12 @@ tuple<double*, double, int, int, int> ARBFInterpolator::interpolate() {
     if (Config::dim == 2) {
         for (int j = 0; j < dimY; ++j) {
             for (int i = 0; i < dimX; ++i) {
-                if (intensities[j*dimX+i] < 0.0) {
-                    intensities[j*dimX+i] = 0.0;
+                if (intensities[j*dimX + i] < 0.0) {
+                    intensities[j*dimX + i] = 0.0;
                 }
                 
-                if (intensities[j*dimX+i] > MAX_INTENSITY) {
-                    intensities[j*dimX+i] = MAX_INTENSITY;
+                if (intensities[j*dimX + i] > MAX_INTENSITY) {
+                    intensities[j*dimX + i] = MAX_INTENSITY;
                 }
             }
         }
@@ -598,7 +604,14 @@ void ARBFInterpolator::buildMatrix(int DIM, int NV, int NF, MatrixXd &ma, Vector
                 }
             }
         }
-    } else { // 3D
+    }
+    // 3D
+    else {
+        // tetrahedron center
+        double centerX = (s_mesh->getMinX() + s_mesh->getMaxX()) / 2.0;
+        double centerY = (s_mesh->getMinY() + s_mesh->getMaxY()) / 2.0;
+        double centerZ = (s_mesh->getMinZ() + s_mesh->getMaxZ()) / 2.0;
+        
         for (int i = 0; i < DIM; i++) {
             if (i < NV) {
                 u(i) = s_mesh->getVertices()[i].intensity;
@@ -616,9 +629,9 @@ void ARBFInterpolator::buildMatrix(int DIM, int NV, int NF, MatrixXd &ma, Vector
                         p1[1] = getCenters()[j-NV].y;
                         p1[2] = getCenters()[j-NV].z;
                     } else {
-                        p1[0] = (s_mesh->getMinX() + s_mesh->getMaxX()) / 2.0;
-                        p1[1] = (s_mesh->getMinY() + s_mesh->getMaxY()) / 2.0;
-                        p1[2] = (s_mesh->getMinZ() + s_mesh->getMaxZ()) / 2.0;
+                        p1[0] = centerX;
+                        p1[1] = centerY;
+                        p1[2] = centerZ;
                     }
                     
                     double r = s_computeDistance(p0, p1);
@@ -640,9 +653,9 @@ void ARBFInterpolator::buildMatrix(int DIM, int NV, int NF, MatrixXd &ma, Vector
                         p1[1] = getCenters()[j-NV].y;
                         p1[2] = getCenters()[j-NV].z;
                     } else {
-                        p1[0] = (s_mesh->getMinX() + s_mesh->getMaxX()) / 2.0;
-                        p1[1] = (s_mesh->getMinY() + s_mesh->getMaxY()) / 2.0;
-                        p1[2] = (s_mesh->getMinZ() + s_mesh->getMaxZ()) / 2.0;
+                        p1[0] = centerX;
+                        p1[1] = centerY;
+                        p1[2] = centerZ;
                     }
                     
                     double r = s_computeDistance(p0, p1);
@@ -650,11 +663,7 @@ void ARBFInterpolator::buildMatrix(int DIM, int NV, int NF, MatrixXd &ma, Vector
                 }
             } else {
                 u(i) = -1;
-                double p0[] = {
-                    (s_mesh->getMinX() + s_mesh->getMaxX()) / 2.0,
-                    (s_mesh->getMinY() + s_mesh->getMaxY()) / 2.0,
-                    (s_mesh->getMinZ() + s_mesh->getMaxZ()) / 2.0
-                };
+                double p0[] = { centerX, centerY, centerZ };
                 
                 for (int j = 0; j < DIM; j++) {
                     double p1[] = { -1, -1, -1 };
@@ -668,9 +677,9 @@ void ARBFInterpolator::buildMatrix(int DIM, int NV, int NF, MatrixXd &ma, Vector
                         p1[1] = getCenters()[j-NV].y;
                         p1[2] = getCenters()[j-NV].z;
                     } else {
-                        p1[0] = (s_mesh->getMinX() + s_mesh->getMaxX()) / 2.0;
-                        p1[1] = (s_mesh->getMinY() + s_mesh->getMaxY()) / 2.0;
-                        p1[2] = (s_mesh->getMinZ() + s_mesh->getMaxZ()) / 2.0;
+                        p1[0] = centerX;
+                        p1[1] = centerY;
+                        p1[2] = centerZ;
                     }
                     
                     double r = s_computeDistance(p0, p1);
@@ -829,7 +838,7 @@ inline double ARBFInterpolator::s_phi(double r) {
 
 // basis function MQ
 inline double ARBFInterpolator::s_basisMQ(double r) {
-    return std::sqrt(SQ(r) + SQ(0.01));
+    return std::sqrt(SQ(r) + SQ(0));
 }
 
 // basis function IMQ
@@ -903,9 +912,14 @@ inline vector<double> ARBFInterpolator::linspace(double a, double b, int n) {
     vector<double> res;
     double step = (b-a) / (n-1);
     
-    while (a <= b) {
+    while (a < b) {
         res.push_back(a);
         a += step;
+    }
+    
+    // get last point
+    if ((a-b) < Config::EPSILON) {
+        res.push_back(b);
     }
     
     return res;

@@ -46,13 +46,14 @@ RawivImage::RawivImage(const RawivImage &other) {
     memcpy(m_dim, other.m_dim, sizeof(int) * 3);
     memcpy(m_min, other.m_min, sizeof(float) * 3);
     memcpy(m_max, other.m_max, sizeof(float) * 3);
-    
 //    m_dim[0] = other.m_dim[0];
 //    m_dim[1] = other.m_dim[1];
 //    m_dim[2] = other.m_dim[2];
+    
 //    m_min[0] = other.m_min[0];
 //    m_min[1] = other.m_min[1];
 //    m_min[2] = other.m_min[2];
+    
 //    m_max[0] = other.m_max[0];
 //    m_max[1] = other.m_max[1];
 //    m_max[2] = other.m_max[2];
@@ -77,9 +78,11 @@ RawivImage& RawivImage::operator=(const RawivImage &other) {
 //    m_dim[0] = other.m_dim[0];
 //    m_dim[1] = other.m_dim[1];
 //    m_dim[2] = other.m_dim[2];
+    
 //    m_min[0] = other.m_min[0];
 //    m_min[1] = other.m_min[1];
 //    m_min[2] = other.m_min[2];
+    
 //    m_max[0] = other.m_max[0];
 //    m_max[1] = other.m_max[1];
 //    m_max[2] = other.m_max[2];
@@ -109,7 +112,6 @@ void RawivImage::write() {
     float *data = new float[m_dim[0] * m_dim[1] * m_dim[2]];
     memcpy(data, m_data, sizeof(float) * m_dim[0] * m_dim[1] * m_dim[2]);
     
-//#ifdef _LITTLE_ENDIAN
     m_swap_buffer((char *) min, 3, sizeof(float));
     m_swap_buffer((char *) max, 3, sizeof(float));
     m_swap_buffer((char *) &numVertices, 1, sizeof(unsigned int));
@@ -118,14 +120,6 @@ void RawivImage::write() {
     m_swap_buffer((char *) origin, 3, sizeof(float));
     m_swap_buffer((char *) span, 3, sizeof(float));
     m_swap_buffer((char *) data, m_dim[0] * m_dim[1] * m_dim[2], sizeof(float));
-//#endif
-    
-    printf("dim = [%d, %d, %d]\n", dim[0], dim[1], dim[2]);
-    printf("min = [%f, %f, %f]\n", min[0], min[1], min[2]);
-    printf("max = [%f, %f, %f]\n", max[0], max[1], max[2]);
-    printf("origin = [%f, %f, %f]\n", origin[0], origin[1], origin[2]);
-    printf("span = [%f, %f, %f]\n", span[0], span[1], span[2]);
-    printf("numVertices = %d, numCells = %d\n", numVertices, numCells);
     
     fwrite(min, sizeof(float), 3, fp);
     fwrite(max, sizeof(float), 3, fp);

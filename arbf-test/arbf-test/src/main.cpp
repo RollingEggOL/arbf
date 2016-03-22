@@ -21,19 +21,13 @@
 #include "../include/TriMesh.h"
 #include "../include/ARBFInterpolator.h"
 
-//#define __TEST__
-
 using namespace std;
 //using namespace boost;
 using namespace Eigen;
 
 //void initLogger(const string& loggerName)
 //{
-//#ifdef _WIN32
-//    Config::loggerName = "logs\\";
-//#else
 //    Config::loggerName = "logs/";
-//#endif
 //    
 //    string info_log = Config::loggerName + Config::loggerINFO;
 //    string warning_log = Config::loggerName + Config::loggerWARNING;
@@ -147,15 +141,8 @@ int main(int argc, const char * argv[])
         output->write();
     } else {
         int dim[] = { get<2>(result), get<3>(result), get<4>(result) };
-        float min[] = {
-            (float) mesh->getMinX(),
-            (float) mesh->getMinY(),
-            (float) mesh->getMinZ()
-        };
-        float max[] = {
-            (float) mesh->getMaxX(),
-            (float) mesh->getMaxY(),
-            (float) mesh->getMaxZ() };
+        float min[] = { (float) mesh->getMinX(), (float) mesh->getMinY(), (float) mesh->getMinZ() };
+        float max[] = { (float) mesh->getMaxX(), (float) mesh->getMaxY(), (float) mesh->getMaxZ() };
         RawivImage* output = new RawivImage(dim, min, max);
         string output_path = PROJ_DIR + "output.rawiv";
         output->setPath(output_path.c_str());
@@ -171,6 +158,10 @@ int main(int argc, const char * argv[])
         }
         
         output->setImageData(data);
+        printf("dim = [%d, %d, %d]\n", dim[0], dim[1], dim[2]);
+        printf("min = [%f, %f, %f]\n", min[0], min[1], min[2]);
+        printf("max = [%f, %f, %f]\n", max[0], max[1], max[2]);
+        
         output->write();
         
         delete [] data;
