@@ -30,6 +30,7 @@ vector<set<int> > ARBFInterpolator::s_ff_2ring;
 
 ARBFInterpolator::ARBFInterpolator() {}
 
+// MARK: Getters/Setters
 void ARBFInterpolator::setMesh(const TriMesh *mesh) {
     s_mesh = mesh;
 }
@@ -58,10 +59,6 @@ inline void ARBFInterpolator::setNeighborFaceFace1Ring(vector<set<int> > &ff) {
     s_ff_1ring = ff;
 }
 
-void ARBFInterpolator::setBasisType(const BasisType type) {
-	s_basis = type;
-}
-
 inline vector<vector<int> >& ARBFInterpolator::getNeigborVertexFace2Ring() {
     return s_vf_2ring;
 }
@@ -86,237 +83,92 @@ inline void ARBFInterpolator::setNeighborFaceFace2Ring(vector<set<int> > &ff) {
     s_ff_2ring = ff;
 }
 
-void ARBFInterpolator::findNeighVertices2Ring() {
-    s_vv_2ring.resize(s_mesh->getNumVertices());
-    s_vf_2ring.resize(s_mesh->getNumVertices());
+// MARK: Shape Functions
+inline double ARBFInterpolator::s_basisMQ(double r) {
+    return std::sqrt(SQ(r) + SQ(0));
+}
+
+inline double ARBFInterpolator::s_basisIMQ(double r) {
+    return 1.0 / (sqrt(SQ(r) + SQ(1.8)));
+}
+
+inline double ARBFInterpolator::s_basisGaussian(double r) {
+    double c = 0.01;
+    return exp(-SQ(c*r));
+}
+
+inline double ARBFInterpolator::s_basisTPS(double r) {
+    if (abs(r) < Config::EPSILON)
+        return 0;
+    else
+        return SQ(r) * log(r);
+}
+
+// MARK: ARBF Related
+inline double ARBFInterpolator::s_computeC(double mu1, double mu2) {
+    double sumMu = mu1 + mu2;
     
-    // build 2-ring VERTEX <-> FACE mapping
-    s_vf_2ring.assign(s_vf_1ring.begin(), s_vf_1ring.end());
-    for (int i = 0; i < s_mesh->getNumFaces(); ++i) {
-        // 3 vertices of current face
-        int a = s_mesh->getFaces()[i].a;
-        int b = s_mesh->getFaces()[i].b;
-        int c = s_mesh->getFaces()[i].c;
-        
-        // neighboring vertices of 3 vertices
-        const std::set<int> &neib1 = s_vv_1ring[a];
-        const std::set<int> &neib2 = s_vv_1ring[b];
-        const std::set<int> &neib3 = s_vv_1ring[c];
-        
-        // go over each neighboring vertices set, check if current face is in
-        // the neighboring faces list
-        std::set<int>::const_iterator it;
-        
-        for (it = neib1.begin(); it != neib1.end(); ++it) {
-            std::vector<int> &neib_faces = s_vf_1ring[*it];
-            if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
-                // current face is not in the list, add it
-                s_vf_2ring[*it].push_back(i);
-            }
-        }
-        
-        for (it = neib2.begin(); it != neib2.end(); ++it) {
-            std::vector<int> &neib_faces = s_vf_1ring[*it];
-            if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
-                // current face is not in the list, add it
-                s_vf_2ring[*it].push_back(i);
-            }
-        }
-        
-        for (it = neib3.begin(); it != neib3.end(); ++it) {
-            std::vector<int> &neib_faces = s_vf_1ring[*it];
-            if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
-                // current face is not in the list, add it
-                s_vf_2ring[*it].push_back(i);
-            }
-        }
-    }
-    
-    // find 2-ring neighboring vertices
-    s_vv_2ring.assign(s_vv_1ring.begin(), s_vv_1ring.end());
-    for (int i = 0; i < s_mesh->getNumVertices(); ++i) {
-        for (int j = 0; j < s_vf_2ring[i].size(); ++j) {
-            s_vv_2ring[i].insert(s_mesh->getFaces()[s_vf_2ring[i][j]].a);
-            s_vv_2ring[i].insert(s_mesh->getFaces()[s_vf_2ring[i][j]].b);
-            s_vv_2ring[i].insert(s_mesh->getFaces()[s_vf_2ring[i][j]].c);
-        }
-    }
-    
-    if (Config::isPrintingDebugInfo) {
-        string filename = "DEBUG.vf_2ring.txt";
-        FILE *fp = nullptr;
-        
-        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
-            fprintf(stderr, "WARNING: open DEBUG.vf_2ring.txt failed.\n");
-            return;
-        }
-        
-        for (int i = 0; i < s_vf_2ring.size(); ++i) {
-            fprintf(fp, "[v <-> f] [%ld] v%d: ", s_vf_2ring[i].size(), i);
-            for (int j = 0; j < s_vf_2ring[i].size(); ++j) {
-                fprintf(fp, "%d ", s_vf_2ring[i][j]);
-            }
-            fprintf(fp, "\n");
-        }
-        
-        fclose(fp);
-        fp = nullptr;
-        filename = "DEBUG.vv_2ring.txt";
-        
-        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
-            fprintf(stderr, "WARNING: open DEBUG.vv_2ring.txt failed ...");
-            return;
-        }
-        
-        for (int i = 0; i < s_vv_2ring.size(); ++i) {
-            fprintf(fp, "[v <-> v] [%ld] v%d: ", s_vv_2ring[i].size(), i);
-            for (set<int>::const_iterator it = s_vv_2ring[i].begin();
-                 it != s_vv_2ring[i].end(); ++it) {
-                fprintf(fp, "%d ", *it);
-            }
-            fprintf(fp, "\n");
-        }
-        
-        fclose(fp);
+    if (sumMu > Config::EPSILON || sumMu < -Config::EPSILON) {
+        return abs(mu1 - mu2) / sumMu;
+    } else {
+        return 1.0;
     }
 }
 
-void ARBFInterpolator::findNeighFaces2Ring() {
-    s_ff_2ring.resize(s_mesh->getNumFaces());
-    
-    for (int f = 0; f < s_mesh->getNumFaces(); ++f) {
-        int a = s_mesh->getFaces()[f].a;
-        int b = s_mesh->getFaces()[f].b;
-        int c = s_mesh->getFaces()[f].c;
-        
-        for (int j = 0; j < s_vf_2ring[a].size(); ++j) {
-            s_ff_2ring[f].insert(s_vf_2ring[a][j]);
-        }
-        
-        for (int j = 0; j < s_vf_2ring[b].size(); ++j) {
-            s_ff_2ring[f].insert(s_vf_2ring[b][j]);
-        }
-        
-        for (int j = 0; j < s_vf_2ring[c].size(); ++j) {
-            s_ff_2ring[f].insert(s_vf_2ring[c][j]);
-        }
-    }
-    
-    if (Config::isPrintingDebugInfo) {
-        string filename = "DEBUG.ff_2ring.txt";
-        FILE *fp = nullptr;
-        
-        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
-            fprintf(stderr, "WARNINIG: open DEBUG.ff_2ring.txt failed ...");
-            return;
-        }
-        
-        for (int f = 0; f < s_ff_2ring.size(); ++f) {
-            fprintf(fp, "[f <-> f] [%ld] f%d: ", s_ff_2ring[f].size(), f);
-            for (set<int>::const_iterator it = s_ff_2ring[f].begin();
-                 it != s_ff_2ring[f].end(); ++it) {
-                fprintf(fp, "%d ", *it);
-            }
-            fprintf(fp, "\n");
-        }
-        
-        fclose(fp);
+inline double ARBFInterpolator::s_computeWeight(double r) {
+    return exp(-SQ(r) / SQ(30.0));
+}
+
+inline double ARBFInterpolator::s_phi(double r) {
+    switch (s_basis) {
+        case MQ:
+        default:
+            return s_basisMQ(r);
+        case IMQ:
+            return s_basisIMQ(r);
+        case Gaussian:
+            return s_basisGaussian(r);
+        case TPS:
+            return s_basisTPS(r);
     }
 }
 
-void ARBFInterpolator::calculateEdgeCenters() {
-    s_edgeCenters = new Vertex[s_mesh->getNumEdges()];
+bool ARBFInterpolator::s_isInTriangle(const double* x, int triangleID) {
+    const Vertex &a = s_mesh->getVertices()[s_mesh->getFaces()[triangleID].a];
+    const Vertex &b = s_mesh->getVertices()[s_mesh->getFaces()[triangleID].b];
+    const Vertex &c = s_mesh->getVertices()[s_mesh->getFaces()[triangleID].c];
     
-    if (s_edgeCenters == nullptr) {
-        fprintf(stderr, "ERROR: allocate memory for triangle edge centers failed.\n");
-        exit(EXIT_FAILURE);
-    }
+    Eigen::Vector2d ab(b.x - a.x, b.y - a.y);
+    Eigen::Vector2d bc(c.x - b.x, c.y - b.y);
+    Eigen::Vector2d ca(a.x - c.x, a.y - c.y);
+    Eigen::Vector2d ax(x[0] - a.x, x[1] - a.y);
+    Eigen::Vector2d bx(x[0] - b.x, x[1] - b.y);
+    Eigen::Vector2d cx(x[0] - c.x, x[1] - c.y);
     
-    int e = 0;
-    for (unordered_set<Edge, edgeComparator>::const_iterator it = s_mesh->getEdges().begin(); it != s_mesh->getEdges().end(); it++, e++) {
-        int a = it->a;
-        int b = it->b;
-        s_edgeCenters[e].x = s_mesh->getVertices()[a].x + 0.5 * (s_mesh->getVertices()[b].x - s_mesh->getVertices()[a].x);
-        s_edgeCenters[e].y = s_mesh->getVertices()[a].y + 0.5 * (s_mesh->getVertices()[b].y - s_mesh->getVertices()[a].y);
-        s_edgeCenters[e].z = s_mesh->getVertices()[a].z + 0.5 * (s_mesh->getVertices()[b].z - s_mesh->getVertices()[a].z);
-        s_edgeCenters[e].intensity = it->intensity;
-    }
+    double area = 0.0, area1 = 0.0, area2 = 0.0, area3 = 0.0;
+    double cosTheta = ab.dot(-ca) / (ab.norm() * ca.norm());
+    area = 0.5 * ab.norm() * ca.norm() * sqrt(1.0 - SQ(cosTheta));
+    double cosTheta1 = ab.dot(ax) / (ab.norm() * ax.norm());
+    area1 = 0.5 * ab.norm() * ax.norm() * sqrt(1.0 - SQ(cosTheta1));
+    double cosTheta2 = cx.dot(ca) / (cx.norm() * ca.norm());
+    area2 = 0.5 * cx.norm() * ca.norm() * sqrt(1.0 - SQ(cosTheta2));
+    double cosTheta3 = bx.dot(bc) / (bx.norm() * bc.norm());
+    area3 = 0.5 * bx.norm() * bc.norm() * sqrt(1.0 - SQ(cosTheta3));
     
-//    PPMImage im(301, 301);
-//    im.setMaxIntensity(255);
-//    im.setPath("/Users/keliu/Documents/projects/arbf/arbf-test/arbf-test/edge.ppm");
-//    double* data = new double[301*301];
-//    memset(data, 0, sizeof(double) * 301 * 301);
-//    for (int j = 0; j < 301; j++) {
-//        for (int i = 0; i < 301; i++) {
-//            for (int e = 0;  e < s_mesh->getNumEdges(); e++) {
-//                if (s_edgeCenters[e].x * 100 == i && s_edgeCenters[e].y * 100 == j) {
-//                    data[j*301+i] = 255;
-//                }
-//            }
-//        }
-//    }
-//    im.setImageData(data);
-//    im.write();
+    if (isnan(area)) area = 0.0;
+    if (isnan(area1)) area1 = 0.0;
+    if (isnan(area2)) area2 = 0.0;
+    if (isnan(area3)) area3 = 0.0;
     
-    if (Config::isPrintingDebugInfo) {
-        string filename = "DEBUG.edge_centers.txt";
-        FILE *fp = nullptr;
-        
-        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
-            fprintf(stderr, "WARNING: open DEBUG.edge_centers.txt failed.\n");
-            return;
-        }
-        
-        fprintf(fp, "X Y INTENSITY\n");
-        
-        for (int e = 0; e < s_mesh->getNumEdges(); ++e) {
-            fprintf(fp, "%lf %lf %lf %lf\n", s_edgeCenters[e].x, s_edgeCenters[e].y, s_edgeCenters[e].z, s_edgeCenters[e].intensity);
-        }
-        
-        fclose(fp);
-    }
+    if (abs(area1 + area2 + area3 - area) < Config::EPSILON)
+        return true;
+    else
+        return false;
 }
 
-void ARBFInterpolator::calculateCenters() {
-    s_centers = new Vertex[s_mesh->getNumFaces()];
-
-    if (s_centers == nullptr) {
-        fprintf(stderr, "ERROR: allocate memory for triangle centers failed.\n");
-        exit(EXIT_FAILURE);
-    }
-    
-    for (int f = 0; f < s_mesh->getNumFaces(); ++f) {
-        int a = s_mesh->getFaces()[f].a;
-        int b = s_mesh->getFaces()[f].b;
-        int c = s_mesh->getFaces()[f].c;
-        
-        // compute coordinates
-        s_centers[f].x = (s_mesh->getVertices()[a].x + s_mesh->getVertices()[b].x + s_mesh->getVertices()[c].x) / 3.0;
-        s_centers[f].y = (s_mesh->getVertices()[a].y + s_mesh->getVertices()[b].y + s_mesh->getVertices()[c].y) / 3.0;
-        s_centers[f].z = (s_mesh->getVertices()[a].z + s_mesh->getVertices()[b].z + s_mesh->getVertices()[c].z) / 3.0;
-        
-        // compute intensity
-        s_centers[f].intensity = s_mesh->getFaces()[f].intensity;
-    }
-    
-    if (Config::isPrintingDebugInfo) {
-        string filename = "DEBUG.centers.txt";
-        FILE *fp = nullptr;
-        
-        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
-            fprintf(stderr, "WARNING: open DEBUG.centers.txt failed.\n");
-            return;
-        }
-        
-        fprintf(fp, "X Y Z INTENSITY\n");
-        
-        for (int f = 0; f < s_mesh->getNumFaces(); ++f) {
-            fprintf(fp, "%lf %lf %lf %lf\n", s_centers[f].x, s_centers[f].y, s_centers[f].z, s_centers[f].intensity);
-        }
-        
-        fclose(fp);
-    }
+// MARK: RBF Related
+inline double ARBFInterpolator::s_computeDistance(const double *v0, const double *v1) {
+    return sqrt(SQ(v1[0]-v0[0]) + SQ(v1[1]-v0[1]) + SQ(v1[2]-v0[2]));
 }
 
 tuple<double*, double, int, int, int> ARBFInterpolator::interpolate() {
@@ -352,12 +204,12 @@ tuple<double*, double, int, int, int> ARBFInterpolator::interpolate() {
         DIM = NV + NF + 1; // with additional tetrahedron center
     }
     
-//    cout << "\nx = ";
-//    copy(x.begin(), x.end(), ostream_iterator<double>(cout, ", "));
-//    cout << "\ny = ";
-//    copy(y.begin(), y.end(), ostream_iterator<double>(cout, ", "));
-//    cout << "\nz = ";
-//    copy(z.begin(), z.end(), ostream_iterator<double>(cout, ", "));
+    //    cout << "\nx = ";
+    //    copy(x.begin(), x.end(), ostream_iterator<double>(cout, ", "));
+    //    cout << "\ny = ";
+    //    copy(y.begin(), y.end(), ostream_iterator<double>(cout, ", "));
+    //    cout << "\nz = ";
+    //    copy(z.begin(), z.end(), ostream_iterator<double>(cout, ", "));
     
     MatrixXd ma(DIM, DIM); // distance matrix
     VectorXd u(DIM); // intensities
@@ -366,15 +218,15 @@ tuple<double*, double, int, int, int> ARBFInterpolator::interpolate() {
     memset(intensities, 0, sizeof(double) * NP);
     buildMatrix(DIM, NV, NF, ma, u); // assemble distance matrix and vector
     
-//    cout << "\nma = \n";
-//    cout << ma << "\n" << "-----" << endl;
-//    cout << ma - ma.transpose() << "-----" << endl;
-//    cout << u << "\n" << "-----" << endl;
+    //    cout << "\nma = \n";
+    //    cout << ma << "\n" << "-----" << endl;
+    //    cout << ma - ma.transpose() << "-----" << endl;
+    //    cout << u << "\n" << "-----" << endl;
     
     coeff = ma.fullPivLu().solve(u); // solve interpolation coefficents
-//    coeff = ma.inverse() * u;
-//    cout << "\ncoeff = \n" << coeff << "\n" << "-----" << endl;
-//    cout << "\ncoeff.sum() = " << coeff.sum() << endl;
+                                     //    coeff = ma.inverse() * u;
+                                     //    cout << "\ncoeff = \n" << coeff << "\n" << "-----" << endl;
+                                     //    cout << "\ncoeff.sum() = " << coeff.sum() << endl;
     
     if (Config::dim == 2) {
         for (int j = 0; j < dimY; j++) {
@@ -446,8 +298,8 @@ tuple<double*, double, int, int, int> ARBFInterpolator::interpolate() {
                         abs(z[k] - s_mesh->getVertices()[v].z) < 1e-6)
                     {
                         printf("\tAt vert[%d][%lf, %lf, %lf], intensity[%d, %d, %d][%lf, %lf, %lf] = %lf\n",
-                                v, s_mesh->getVertices()[v].x, s_mesh->getVertices()[v].y, s_mesh->getVertices()[v].z, i, j, k,
-                                x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
+                               v, s_mesh->getVertices()[v].x, s_mesh->getVertices()[v].y, s_mesh->getVertices()[v].z, i, j, k,
+                               x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
                         break;
                     }
                 }
@@ -458,8 +310,8 @@ tuple<double*, double, int, int, int> ARBFInterpolator::interpolate() {
                         abs(z[k] - getCenters()[f].z) < 1e-6)
                     {
                         printf("\tAt face[%d][%lf, %lf, %lf], intensity[%d, %d, %d][%lf, %lf, %lf] = %lf\n",
-                                f, getCenters()[f].x, getCenters()[f].y, getCenters()[f].z, i, j, k,
-                                x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
+                               f, getCenters()[f].x, getCenters()[f].y, getCenters()[f].z, i, j, k,
+                               x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
                         break;
                     }
                 }
@@ -515,15 +367,15 @@ tuple<double*, double, int, int, int> ARBFInterpolator::interpolate() {
         }
     }
     
-//    cout << "\nintensity after rescale = \n";
-//    for (int j = 0; j < dimY; j++) {
-//        for (int i = 0; i < dimX; i++) {
-//            cout << (int) round(intensities[j*dimX+i]) << " ";
-//        }
-//        cout << "\n";
-//    }
-//    cout << "\n" << "-----" << endl;
-
+    //    cout << "\nintensity after rescale = \n";
+    //    for (int j = 0; j < dimY; j++) {
+    //        for (int i = 0; i < dimX; i++) {
+    //            cout << (int) round(intensities[j*dimX+i]) << " ";
+    //        }
+    //        cout << "\n";
+    //    }
+    //    cout << "\n" << "-----" << endl;
+    
     return tuple<double*, double, int, int, int>(intensities, MAX_INTENSITY, dimX, dimY, dimZ);
 }
 
@@ -690,10 +542,56 @@ void ARBFInterpolator::buildMatrix(int DIM, int NV, int NF, MatrixXd &ma, Vector
     }
 }
 
+// MARK: Utility Functions
+void ARBFInterpolator::setBasisType(const BasisType type) {
+    s_basis = type;
+}
+
 double ARBFInterpolator::computePSNR(const PPMImage &img1, const PPMImage &img2) {
     return 20.0 * log10(255.0 / s_computeRMSE(img1, img2));
 }
 
+inline double ARBFInterpolator::s_computeRMSE(const PPMImage &img1, const PPMImage &img2) {
+    double sum = 0.0;
+    assert(img1.getX() == img2.getX() && img1.getY() == img2.getY());
+    
+    for (int j = 0; j < img1.getY(); ++j) {
+        for (int i = 0; i < img1.getX(); ++i) {
+            sum += SQ(img1.getImageData()[j * img1.getX() + i] - img2.getImageData()[j * img2.getX() + i]);
+            // sum += SQ(img1.getImageData[j*N1+i] - piecewise[j*N1+i]);
+        }
+    }
+    
+    return sqrt(sum / (img1.getX() * img1.getY()));
+}
+
+inline vector<double> ARBFInterpolator::linspace(double a, double b, int n) {
+    assert(b > a && n > 0);
+    vector<double> res;
+    double step = (b-a) / (n-1);
+    
+    while (a < b) {
+        res.push_back(a);
+        a += step;
+    }
+    
+    // get last point
+    if ((a-b) < Config::EPSILON) {
+        res.push_back(b);
+    }
+    
+    return res;
+}
+
+void ARBFInterpolator::clean() {
+    delete [] s_edgeCenters;
+    s_edgeCenters = nullptr;
+    
+    delete [] s_centers;
+    s_centers = nullptr;
+}
+
+// MARK: Find Neighboring Triangles and Vertices
 void ARBFInterpolator::findNeighVertices1Ring() {
     s_vv_1ring.resize(s_mesh->getNumVertices());
     s_vf_1ring.resize(s_mesh->getNumVertices());
@@ -796,131 +694,236 @@ void ARBFInterpolator::findNeighFaces1Ring() {
     }
 }
 
-void ARBFInterpolator::clean() {
-    delete [] s_edgeCenters;
-    s_edgeCenters = nullptr;
+void ARBFInterpolator::findNeighVertices2Ring() {
+    s_vv_2ring.resize(s_mesh->getNumVertices());
+    s_vf_2ring.resize(s_mesh->getNumVertices());
     
-    delete [] s_centers;
-    s_centers = nullptr;
-}
-    
-inline double ARBFInterpolator::s_computeC(double mu1, double mu2) {
-    double sumMu = mu1 + mu2;
-    
-    if (sumMu > Config::EPSILON || sumMu < -Config::EPSILON) {
-        return abs(mu1 - mu2) / sumMu;
-    } else {
-        return 1.0;
-    }
-}
-
-inline double ARBFInterpolator::s_computeWeight(double r) {
-    return exp(-SQ(r) / SQ(30.0));
-}
-
-inline double ARBFInterpolator::s_computeDistance(const double *v0, const double *v1) {
-    return sqrt(SQ(v1[0]-v0[0]) + SQ(v1[1]-v0[1]) + SQ(v1[2]-v0[2]));
-}
-
-inline double ARBFInterpolator::s_phi(double r) {
-	switch (s_basis) {
-	case MQ:
-	default:
-		return s_basisMQ(r);
-	case IMQ:
-		return s_basisIMQ(r);
-	case Gaussian:
-		return s_basisGaussian(r);
-	case TPS:
-		return s_basisTPS(r);
-	}
-}
-
-// basis function MQ
-inline double ARBFInterpolator::s_basisMQ(double r) {
-    return std::sqrt(SQ(r) + SQ(0));
-}
-
-// basis function IMQ
-inline double ARBFInterpolator::s_basisIMQ(double r) {
-    return 1.0 / (sqrt(SQ(r) + SQ(1.8)));
-}
-
-// basis function Gaussian
-inline double ARBFInterpolator::s_basisGaussian(double r) {
-    double c = 0.01;
-    return exp(-SQ(c*r));
-}
-
-// basis function TPS
-inline double ARBFInterpolator::s_basisTPS(double r) {
-    if (abs(r) < Config::EPSILON)
-        return 0;
-    else
-        return SQ(r) * log(r);
-}
-
-bool ARBFInterpolator::s_isInTriangle(const double* x, int triangleID) {
-    const Vertex &a = s_mesh->getVertices()[s_mesh->getFaces()[triangleID].a];
-    const Vertex &b = s_mesh->getVertices()[s_mesh->getFaces()[triangleID].b];
-    const Vertex &c = s_mesh->getVertices()[s_mesh->getFaces()[triangleID].c];
-    
-    Eigen::Vector2d ab(b.x - a.x, b.y - a.y);
-    Eigen::Vector2d bc(c.x - b.x, c.y - b.y);
-    Eigen::Vector2d ca(a.x - c.x, a.y - c.y);
-    Eigen::Vector2d ax(x[0] - a.x, x[1] - a.y);
-    Eigen::Vector2d bx(x[0] - b.x, x[1] - b.y);
-    Eigen::Vector2d cx(x[0] - c.x, x[1] - c.y);
-    
-    double area = 0.0, area1 = 0.0, area2 = 0.0, area3 = 0.0;
-    double cosTheta = ab.dot(-ca) / (ab.norm() * ca.norm());
-    area = 0.5 * ab.norm() * ca.norm() * sqrt(1.0 - SQ(cosTheta));
-    double cosTheta1 = ab.dot(ax) / (ab.norm() * ax.norm());
-    area1 = 0.5 * ab.norm() * ax.norm() * sqrt(1.0 - SQ(cosTheta1));
-    double cosTheta2 = cx.dot(ca) / (cx.norm() * ca.norm());
-    area2 = 0.5 * cx.norm() * ca.norm() * sqrt(1.0 - SQ(cosTheta2));
-    double cosTheta3 = bx.dot(bc) / (bx.norm() * bc.norm());
-    area3 = 0.5 * bx.norm() * bc.norm() * sqrt(1.0 - SQ(cosTheta3));
-    
-    if (isnan(area)) area = 0.0;
-    if (isnan(area1)) area1 = 0.0;
-    if (isnan(area2)) area2 = 0.0;
-    if (isnan(area3)) area3 = 0.0;
-    
-    if (abs(area1 + area2 + area3 - area) < Config::EPSILON)
-        return true;
-    else
-        return false;
-}
-    
-inline double ARBFInterpolator::s_computeRMSE(const PPMImage &img1, const PPMImage &img2) {
-    double sum = 0.0;
-    assert(img1.getX() == img2.getX() && img1.getY() == img2.getY());
-    
-    for (int j = 0; j < img1.getY(); ++j) {
-        for (int i = 0; i < img1.getX(); ++i) {
-            sum += SQ(img1.getImageData()[j * img1.getX() + i] - img2.getImageData()[j * img2.getX() + i]);
-            // sum += SQ(img1.getImageData[j*N1+i] - piecewise[j*N1+i]);
+    // build 2-ring VERTEX <-> FACE mapping
+    s_vf_2ring.assign(s_vf_1ring.begin(), s_vf_1ring.end());
+    for (int i = 0; i < s_mesh->getNumFaces(); ++i) {
+        // 3 vertices of current face
+        int a = s_mesh->getFaces()[i].a;
+        int b = s_mesh->getFaces()[i].b;
+        int c = s_mesh->getFaces()[i].c;
+        
+        // neighboring vertices of 3 vertices
+        const std::set<int> &neib1 = s_vv_1ring[a];
+        const std::set<int> &neib2 = s_vv_1ring[b];
+        const std::set<int> &neib3 = s_vv_1ring[c];
+        
+        // go over each neighboring vertices set, check if current face is in
+        // the neighboring faces list
+        std::set<int>::const_iterator it;
+        
+        for (it = neib1.begin(); it != neib1.end(); ++it) {
+            std::vector<int> &neib_faces = s_vf_1ring[*it];
+            if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
+                // current face is not in the list, add it
+                s_vf_2ring[*it].push_back(i);
+            }
+        }
+        
+        for (it = neib2.begin(); it != neib2.end(); ++it) {
+            std::vector<int> &neib_faces = s_vf_1ring[*it];
+            if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
+                // current face is not in the list, add it
+                s_vf_2ring[*it].push_back(i);
+            }
+        }
+        
+        for (it = neib3.begin(); it != neib3.end(); ++it) {
+            std::vector<int> &neib_faces = s_vf_1ring[*it];
+            if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
+                // current face is not in the list, add it
+                s_vf_2ring[*it].push_back(i);
+            }
         }
     }
     
-    return sqrt(sum / (img1.getX() * img1.getY()));
+    // find 2-ring neighboring vertices
+    s_vv_2ring.assign(s_vv_1ring.begin(), s_vv_1ring.end());
+    for (int i = 0; i < s_mesh->getNumVertices(); ++i) {
+        for (int j = 0; j < s_vf_2ring[i].size(); ++j) {
+            s_vv_2ring[i].insert(s_mesh->getFaces()[s_vf_2ring[i][j]].a);
+            s_vv_2ring[i].insert(s_mesh->getFaces()[s_vf_2ring[i][j]].b);
+            s_vv_2ring[i].insert(s_mesh->getFaces()[s_vf_2ring[i][j]].c);
+        }
+    }
+    
+    if (Config::isPrintingDebugInfo) {
+        string filename = "DEBUG.vf_2ring.txt";
+        FILE *fp = nullptr;
+        
+        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
+            fprintf(stderr, "WARNING: open DEBUG.vf_2ring.txt failed.\n");
+            return;
+        }
+        
+        for (int i = 0; i < s_vf_2ring.size(); ++i) {
+            fprintf(fp, "[v <-> f] [%ld] v%d: ", s_vf_2ring[i].size(), i);
+            for (int j = 0; j < s_vf_2ring[i].size(); ++j) {
+                fprintf(fp, "%d ", s_vf_2ring[i][j]);
+            }
+            fprintf(fp, "\n");
+        }
+        
+        fclose(fp);
+        fp = nullptr;
+        filename = "DEBUG.vv_2ring.txt";
+        
+        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
+            fprintf(stderr, "WARNING: open DEBUG.vv_2ring.txt failed ...");
+            return;
+        }
+        
+        for (int i = 0; i < s_vv_2ring.size(); ++i) {
+            fprintf(fp, "[v <-> v] [%ld] v%d: ", s_vv_2ring[i].size(), i);
+            for (set<int>::const_iterator it = s_vv_2ring[i].begin();
+                 it != s_vv_2ring[i].end(); ++it) {
+                fprintf(fp, "%d ", *it);
+            }
+            fprintf(fp, "\n");
+        }
+        
+        fclose(fp);
+    }
 }
 
-inline vector<double> ARBFInterpolator::linspace(double a, double b, int n) {
-    assert(b > a && n > 0);
-    vector<double> res;
-    double step = (b-a) / (n-1);
+void ARBFInterpolator::findNeighFaces2Ring() {
+    s_ff_2ring.resize(s_mesh->getNumFaces());
     
-    while (a < b) {
-        res.push_back(a);
-        a += step;
+    for (int f = 0; f < s_mesh->getNumFaces(); ++f) {
+        int a = s_mesh->getFaces()[f].a;
+        int b = s_mesh->getFaces()[f].b;
+        int c = s_mesh->getFaces()[f].c;
+        
+        for (int j = 0; j < s_vf_2ring[a].size(); ++j) {
+            s_ff_2ring[f].insert(s_vf_2ring[a][j]);
+        }
+        
+        for (int j = 0; j < s_vf_2ring[b].size(); ++j) {
+            s_ff_2ring[f].insert(s_vf_2ring[b][j]);
+        }
+        
+        for (int j = 0; j < s_vf_2ring[c].size(); ++j) {
+            s_ff_2ring[f].insert(s_vf_2ring[c][j]);
+        }
     }
     
-    // get last point
-    if ((a-b) < Config::EPSILON) {
-        res.push_back(b);
+    if (Config::isPrintingDebugInfo) {
+        string filename = "DEBUG.ff_2ring.txt";
+        FILE *fp = nullptr;
+        
+        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
+            fprintf(stderr, "WARNINIG: open DEBUG.ff_2ring.txt failed ...");
+            return;
+        }
+        
+        for (int f = 0; f < s_ff_2ring.size(); ++f) {
+            fprintf(fp, "[f <-> f] [%ld] f%d: ", s_ff_2ring[f].size(), f);
+            for (set<int>::const_iterator it = s_ff_2ring[f].begin();
+                 it != s_ff_2ring[f].end(); ++it) {
+                fprintf(fp, "%d ", *it);
+            }
+            fprintf(fp, "\n");
+        }
+        
+        fclose(fp);
+    }
+}
+
+// MARK: Calculate Triangle Centers and Edge Centers
+void ARBFInterpolator::calculateEdgeCenters() {
+    s_edgeCenters = new Vertex[s_mesh->getNumEdges()];
+    
+    if (s_edgeCenters == nullptr) {
+        fprintf(stderr, "ERROR: allocate memory for triangle edge centers failed.\n");
+        exit(EXIT_FAILURE);
     }
     
-    return res;
+    int e = 0;
+    for (unordered_set<Edge, edgeComparator>::const_iterator it = s_mesh->getEdges().begin(); it != s_mesh->getEdges().end(); it++, e++) {
+        int a = it->a;
+        int b = it->b;
+        s_edgeCenters[e].x = s_mesh->getVertices()[a].x + 0.5 * (s_mesh->getVertices()[b].x - s_mesh->getVertices()[a].x);
+        s_edgeCenters[e].y = s_mesh->getVertices()[a].y + 0.5 * (s_mesh->getVertices()[b].y - s_mesh->getVertices()[a].y);
+        s_edgeCenters[e].z = s_mesh->getVertices()[a].z + 0.5 * (s_mesh->getVertices()[b].z - s_mesh->getVertices()[a].z);
+        s_edgeCenters[e].intensity = it->intensity;
+    }
+    
+    //    PPMImage im(301, 301);
+    //    im.setMaxIntensity(255);
+    //    im.setPath("/Users/keliu/Documents/projects/arbf/arbf-test/arbf-test/edge.ppm");
+    //    double* data = new double[301*301];
+    //    memset(data, 0, sizeof(double) * 301 * 301);
+    //    for (int j = 0; j < 301; j++) {
+    //        for (int i = 0; i < 301; i++) {
+    //            for (int e = 0;  e < s_mesh->getNumEdges(); e++) {
+    //                if (s_edgeCenters[e].x * 100 == i && s_edgeCenters[e].y * 100 == j) {
+    //                    data[j*301+i] = 255;
+    //                }
+    //            }
+    //        }
+    //    }
+    //    im.setImageData(data);
+    //    im.write();
+    
+    if (Config::isPrintingDebugInfo) {
+        string filename = "DEBUG.edge_centers.txt";
+        FILE *fp = nullptr;
+        
+        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
+            fprintf(stderr, "WARNING: open DEBUG.edge_centers.txt failed.\n");
+            return;
+        }
+        
+        fprintf(fp, "X Y INTENSITY\n");
+        
+        for (int e = 0; e < s_mesh->getNumEdges(); ++e) {
+            fprintf(fp, "%lf %lf %lf %lf\n", s_edgeCenters[e].x, s_edgeCenters[e].y, s_edgeCenters[e].z, s_edgeCenters[e].intensity);
+        }
+        
+        fclose(fp);
+    }
+}
+
+void ARBFInterpolator::calculateCenters() {
+    s_centers = new Vertex[s_mesh->getNumFaces()];
+    
+    if (s_centers == nullptr) {
+        fprintf(stderr, "ERROR: allocate memory for triangle centers failed.\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    for (int f = 0; f < s_mesh->getNumFaces(); ++f) {
+        int a = s_mesh->getFaces()[f].a;
+        int b = s_mesh->getFaces()[f].b;
+        int c = s_mesh->getFaces()[f].c;
+        
+        // compute coordinates
+        s_centers[f].x = (s_mesh->getVertices()[a].x + s_mesh->getVertices()[b].x + s_mesh->getVertices()[c].x) / 3.0;
+        s_centers[f].y = (s_mesh->getVertices()[a].y + s_mesh->getVertices()[b].y + s_mesh->getVertices()[c].y) / 3.0;
+        s_centers[f].z = (s_mesh->getVertices()[a].z + s_mesh->getVertices()[b].z + s_mesh->getVertices()[c].z) / 3.0;
+        
+        // compute intensity
+        s_centers[f].intensity = s_mesh->getFaces()[f].intensity;
+    }
+    
+    if (Config::isPrintingDebugInfo) {
+        string filename = "DEBUG.centers.txt";
+        FILE *fp = nullptr;
+        
+        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
+            fprintf(stderr, "WARNING: open DEBUG.centers.txt failed.\n");
+            return;
+        }
+        
+        fprintf(fp, "X Y Z INTENSITY\n");
+        
+        for (int f = 0; f < s_mesh->getNumFaces(); ++f) {
+            fprintf(fp, "%lf %lf %lf %lf\n", s_centers[f].x, s_centers[f].y, s_centers[f].z, s_centers[f].intensity);
+        }
+        
+        fclose(fp);
+    }
 }
