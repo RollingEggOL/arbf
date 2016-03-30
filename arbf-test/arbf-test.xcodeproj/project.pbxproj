@@ -50,6 +50,7 @@
 		E37751991C7805E7004A451F /* PPMImage.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PPMImage.cpp; sourceTree = "<group>"; };
 		E377519A1C7805E7004A451F /* TriMesh.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TriMesh.cpp; sourceTree = "<group>"; };
 		E37751A11C780C5E004A451F /* box.tri */ = {isa = PBXFileReference; lastKnownFileType = text; path = box.tri; sourceTree = "<group>"; };
+		E3CE607F1CAC69EF00B398EB /* triangle_anisotropic.tri */ = {isa = PBXFileReference; lastKnownFileType = text; path = triangle_anisotropic.tri; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -120,6 +121,7 @@
 		E377518C1C780530004A451F /* data */ = {
 			isa = PBXGroup;
 			children = (
+				E3CE607F1CAC69EF00B398EB /* triangle_anisotropic.tri */,
 				E35203D11C85469500D25D0E /* tetrahedron.tri */,
 				E35203CF1C84EF0A00D25D0E /* tetrahedron.off */,
 				E37751A11C780C5E004A451F /* box.tri */,
