@@ -87,6 +87,11 @@ public:
     static std::tuple<double*, double, int, int, int> interpolate();
     
     /*
+     * Compute metric tensors for every edge
+     */
+    static void computeMetric();
+    
+    /*
      * Compute Peak-Signal-Noise-Ratio between original image and reconstructed image.
      * \return: PSNR.
      */
@@ -118,10 +123,11 @@ private:
     /*
      * Compute Euclidean distance.
      * \param v0: input point 1.
-     * \param mu2: input point 2.
+     * \param v1: input point 2.
+     * \param T: structure tensor
      * \return: distance betwee \param v0 and \param v1.
      */
-    static double s_computeDistance(const double *v0, const double *v1);
+    static double s_computeDistance(const double *v0, const double *v1, const Eigen::Matrix3d& T);
     
     /*
      * Compute chosen basis function based on s_basis.
@@ -167,6 +173,11 @@ private:
     static bool s_isInTriangle(const double *x, int triangleID);
     
     /*
+     * Compute eigenvalues and eigenvectors of given 2x2 matrix.
+     */
+    static std::tuple<double, double, std::vector<double>, std::vector<double>> s_computeEigen(const Eigen::Matrix2d &m);
+    
+    /*
      * Compute square-root of mean error.
      * \return: RMSE.
      */
@@ -180,6 +191,7 @@ private:
     static Vertex *s_edgeCenters; // triangle edge centers
     static const TriMesh *s_mesh; // Tri-mesh
 	static BasisType s_basis; // type of basis function
+    static std::vector<Eigen::Matrix3d> s_T; // metric tensor
 
     static std::vector<std::vector<int> > s_vf_1ring; // 1-ring VERTEX <-> FACE
     static std::vector<std::set<int> > s_vv_1ring; // 1-ring VERTEX <-> VERTEX

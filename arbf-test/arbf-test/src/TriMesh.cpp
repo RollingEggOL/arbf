@@ -118,6 +118,12 @@ void TriMesh::read(const char *path) {
         m_vertex[v].y = y;
         m_vertex[v].z = z;
         m_vertex[v].intensity = 1;
+        m_vertex[v].eig1 = 0;
+        m_vertex[v].eig2 = 0;
+        m_vertex[v].eig3 = 0;
+        m_vertex[v].eigVec1 = {1, 0, 0};
+        m_vertex[v].eigVec2 = {0, 1, 0};
+        m_vertex[v].eigVec3 = {0, 0, 1};
         
         if (x < m_minX) {
             m_minX = x;

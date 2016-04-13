@@ -128,6 +128,13 @@ int main(int argc, const char * argv[])
         printf("Finding 2-Ring neighbors ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
     }
     
+    // compute metrics
+    start = clock();
+    ARBFInterpolator::computeMetric();
+    span = clock() - start;
+    total += span;
+    printf("Computing metrics ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
+    
     // interpolate
     start = clock();
     tuple<double*, double, int, int, int> result = ARBFInterpolator::interpolate();
