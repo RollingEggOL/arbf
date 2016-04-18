@@ -150,6 +150,12 @@ void TriMesh::read(const char *path) {
         }
     }
     
+//    // enlarge bounding box temporarily
+//    m_minX -= 2;
+//    m_minY -= 2;
+//    m_maxX += 2;
+//    m_maxY += 2;
+    
     // read faces
     for (int f = 0; f < m_nf; f++) {
         fscanf(fin,"%d %d %d %d\n",&a, &b, &c, &d);

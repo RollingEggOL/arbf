@@ -255,7 +255,7 @@ inline double ARBFInterpolator::s_computeDistance(const double *v0, const double
 
 // MARK: RBF Related
 tuple<double*, double, int, int, int> ARBFInterpolator::interpolate() {
-    const int NP = 90601; // number of evaluation points
+    const int NP = 250000; // number of evaluation points
     int dimX = 0, dimY = 0, dimZ = 0;
     
     if (Config::dim == 2) {
