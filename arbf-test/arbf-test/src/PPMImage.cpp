@@ -117,6 +117,8 @@ void PPMImage::read() {
 }
 
 void PPMImage::write() const {
+    double isoValues[] = {64.0, 32.0, 16.0};
+    
     FILE* fp = nullptr;
     
     if ((fp = fopen(m_path.c_str(), "wb")) == nullptr) {
@@ -128,9 +130,24 @@ void PPMImage::write() const {
 
     for (int j = 0; j < m_y; j++) {
         for (int i = 0; i < m_x; i++) {
-            fputc((int) m_data[j*m_x+i], fp);
-            fputc((int) m_data[j*m_x+i], fp);
-            fputc((int) m_data[j*m_x+i], fp);
+            
+            if (m_data[j*m_x+i] <= isoValues[0] && m_data[j*m_x+i] > isoValues[1]) {
+                fputc(255, fp);
+                fputc(0, fp);
+                fputc(0, fp);
+            } else if (m_data[j*m_x+i] <= isoValues[1] && m_data[j*m_x+i] > isoValues[2]) {
+                fputc(0, fp);
+                fputc(255, fp);
+                fputc(0, fp);
+            } else if (m_data[j*m_x+i] <= isoValues[2]) {
+                fputc(0, fp);
+                fputc(0, fp);
+                fputc(255, fp);
+            } else {
+                fputc((int) m_data[j*m_x+i], fp);
+                fputc((int) m_data[j*m_x+i], fp);
+                fputc((int) m_data[j*m_x+i], fp);
+            }
         }
     }
 

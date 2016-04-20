@@ -118,6 +118,8 @@ public:
     
 private:
     void read(const char *path);
+    void write(const char *path);
+    void deform(); // randomize input to make deformed mesh
     
 private:
     Vertex *m_vertex; // vertices

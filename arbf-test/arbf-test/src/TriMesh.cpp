@@ -9,13 +9,17 @@
 #include <cstdio>
 #include <cstring>
 #include <cassert>
+#include <cmath>
 #include <limits>
+#include <string>
+#include <cstdlib>
+#include <ctime>
 #include "../include/TriMesh.h"
 
 using namespace std;
 //using namespace boost;
 
-TriMesh::TriMesh() : m_vertex(nullptr), m_face(nullptr), m_nv(0), m_nf(0), m_ne(0),
+TriMesh::TriMesh(): m_vertex(nullptr), m_face(nullptr), m_nv(0), m_nf(0), m_ne(0),
 m_minX(numeric_limits<double>::max()), m_maxX(numeric_limits<double>::lowest()),
 m_minY(numeric_limits<double>::max()), m_maxY(numeric_limits<double>::lowest()),
 m_minZ(numeric_limits<double>::max()), m_maxZ(numeric_limits<double>::lowest()) {}
@@ -77,8 +81,8 @@ TriMesh& TriMesh::operator=(const TriMesh &other) {
 
 void TriMesh::read(const char *path) {
     printf("Reading mesh file %s\n", path);
-    int dim;
     int a, b, c, d;
+    int dim;
     double x, y, z;
     char line[256];
     FILE *fin = nullptr;
@@ -86,7 +90,7 @@ void TriMesh::read(const char *path) {
     if ((fin = fopen(path, "r")) == nullptr) {
         fprintf(stderr, "Error: Reading mesh file %s \n", path);
         exit(EXIT_FAILURE);
-    };
+    }
     
     // TRI format
     while (fgets(line, 256, fin) != nullptr) {
@@ -178,6 +182,53 @@ void TriMesh::read(const char *path) {
         m_edge.insert(e2);
         m_edge.insert(e3);
     }
+    
     fclose(fin);
     assert(m_edge.size() == m_ne);
+    
+    string outputFileName = string(path) + ".off";
+    deform();
+    write(outputFileName.c_str());
+}
+
+void TriMesh::write(const char *path) {
+    printf("Writing mesh file %s\n", path);
+    FILE *fout = nullptr;
+    
+    if ((fout = fopen(path, "w")) == nullptr) {
+        fprintf(stderr, "Error: Writing mesh file %s \n", path);
+        exit(EXIT_FAILURE);
+    }
+    
+    fputs("OFF\n", fout);
+    fprintf(fout, "%d %d %d\n", m_nv, m_nf, m_ne);
+    
+    for (int v = 0; v < m_nv; v++) {
+        fprintf(fout, "%lf %lf %lf\n", m_vertex[v].x, m_vertex[v].y, m_vertex[v].z);
+    }
+    
+    for (int f = 0; f < m_nf; f++) {
+        fprintf(fout, "3 %d %d %d\n", m_face[f].a, m_face[f].b, m_face[f].c);
+    }
+    
+    fclose(fout);
+}
+
+void TriMesh::deform() {
+    srand(static_cast<unsigned int>(time(NULL)));
+//    double t1 = 0.5, t2 = 0.5, t3 = 0.5;
+    double t1 = (double) rand() / RAND_MAX;
+    double t2 = (double) rand() / RAND_MAX;
+    double t3 = (double) rand() / RAND_MAX;
+    
+    // fixed mesh nodes: 0, 3, 5
+    // moving mesh nodes: 1, 4, 2
+    // x = x0 + t * (x1 - x0)
+    // y = y0 + t * (y1 - y0)
+    m_vertex[1].x = m_vertex[0].x + t1 * (m_vertex[3].x - m_vertex[0].x);
+    m_vertex[1].y = m_vertex[0].y + t1 * (m_vertex[3].y - m_vertex[0].y);
+    m_vertex[4].x = m_vertex[3].x + t2 * (m_vertex[5].x - m_vertex[3].x);
+    m_vertex[4].y = m_vertex[3].y + t2 * (m_vertex[5].y - m_vertex[3].y);
+    m_vertex[2].x = m_vertex[5].x + t3 * (m_vertex[0].x - m_vertex[5].x);
+    m_vertex[2].y = m_vertex[5].y + t3 * (m_vertex[0].y - m_vertex[5].y);
 }
