@@ -101,14 +101,12 @@ int main(int argc, const char * argv[])
     total += span;
     printf("Computing centers ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
     
-    // initialize triangle edge centers, for 2D model only
-    if (Config::dim == 2) {
-        start = clock();
-        ARBFInterpolator::calculateEdgeCenters();
-        span = clock() - start;
-        total += span;
-        printf("Computing edge centers ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
-    }
+    // initialize triangle edge centers
+    start = clock();
+    ARBFInterpolator::calculateEdgeCenters();
+    span = clock() - start;
+    total += span;
+    printf("Computing edge centers ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
     
 	// find neighboring vertices for each vertex and
     // neighboring faces for each face (center)

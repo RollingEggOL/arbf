@@ -186,9 +186,9 @@ void TriMesh::read(const char *path) {
     fclose(fin);
     assert(m_edge.size() == m_ne);
     
-    string outputFileName = string(path) + ".off";
-    deform();
-    write(outputFileName.c_str());
+//    string outputFileName = string(path) + ".off";
+//    deform();
+//    write(outputFileName.c_str());
 }
 
 void TriMesh::write(const char *path) {

@@ -255,7 +255,7 @@ inline double ARBFInterpolator::s_computeDistance(const double *v0, const double
 
 // MARK: RBF Related
 tuple<double*, double, int, int, int> ARBFInterpolator::interpolate() {
-    const int NP = 250000; // number of evaluation points
+    const int NP = 160000; // number of evaluation points
     int dimX = 0, dimY = 0, dimZ = 0;
     
     if (Config::dim == 2) {
@@ -976,14 +976,20 @@ void ARBFInterpolator::calculateEdgeCenters() {
     }
     
     // function to compute C, used to transform eigenvalues
-    auto computeC = [](double mu1, double mu2) -> double {
-        double sum = mu1 + mu2;
+    auto computeC = [](double mu1, double mu2, double mu3) -> tuple<double, double> {
+        double sum1 = mu1 + mu2;
+        double sum2 = mu1 + mu3;
+        double res1 = 1.0, res2 = 1.0;
         
-        if (sum > Config::EPSILON || sum < -Config::EPSILON) {
-            return abs(mu1 - mu2) / sum;
-        } else {
-            return 1.0;
+        if (sum1 > Config::EPSILON || sum1 < -Config::EPSILON) {
+            res1 = abs(mu1 - mu2) / sum1;
         }
+        
+        if (sum2 > Config::EPSILON || sum2 < -Config::EPSILON) {
+            res2 = abs(mu1 - mu3) / sum2;
+        }
+        
+        return make_tuple(res1, res2);
     };
     
     int e = 0;
@@ -995,49 +1001,68 @@ void ARBFInterpolator::calculateEdgeCenters() {
         s_edgeCenters[e].z = s_mesh->getVertices()[a].z + 0.5 * (s_mesh->getVertices()[b].z - s_mesh->getVertices()[a].z);
         s_edgeCenters[e].intensity = it->intensity;
         
-        // only calculate eigenvalues and eigenvectors for edges of 1st triangle
+//        // only calculate eigenvalues and eigenvectors for edges of 1st triangle
 //        double dx = s_centers[0].x - s_edgeCenters[e].x;
 //        double dy = s_centers[0].y - s_edgeCenters[e].y;
         double dx = s_mesh->getVertices()[b].x - s_mesh->getVertices()[a].x;
         double dy = s_mesh->getVertices()[b].y - s_mesh->getVertices()[a].y;
-        double normDxy = sqrt(SQ(dx) + SQ(dy));
-//        double gradX = dx / normDxy;
-//        double gradY = dy / normDxy;
+        double dz = s_mesh->getVertices()[b].z - s_mesh->getVertices()[a].z;
+        double normDxy = sqrt(SQ(dx) + SQ(dy) + SQ(dz));
         double gradX = dx / normDxy;
         double gradY = dy / normDxy;
-//        double gradZ = s_centers[0].z - s_edgeCenters[e].z;
-//        Matrix3d mEdge;
-        Matrix2d mEdge;
+        double gradZ = dz / normDxy;
+        Matrix3d mEdge;
+//        Matrix2d mEdge;
         mEdge(0, 0) = gradX * gradX;
         mEdge(0, 1) = gradX * gradY;
-//        mEdge(0, 2) = gradX * gradZ;
+        mEdge(0, 2) = gradX * gradZ;
         mEdge(1, 0) = gradY * gradX;
         mEdge(1, 1) = gradY * gradY;
-//        mEdge(1, 2) = gradY * gradZ;
-//        mEdge(2, 0) = gradZ * gradX;
-//        mEdge(2, 1) = gradZ * gradY;
-//        mEdge(2, 2) = gradZ * gradZ;
+        mEdge(1, 2) = gradY * gradZ;
+        mEdge(2, 0) = gradZ * gradX;
+        mEdge(2, 1) = gradZ * gradY;
+        mEdge(2, 2) = gradZ * gradZ;
         
         // compute eigenvalues and eigenvectors
-//        EigenSolver<Matrix3d> solver(mEdge);
-        auto result = s_computeEigen(mEdge);
-        double eig2 = 0.0;
-        double c = computeC(get<0>(result), get<1>(result));
+        EigenSolver<Matrix3d> solver(mEdge);
+//        auto result = s_computeEigen(mEdge); // returns tuple<double, double, vector<double>, vector<double>>
+        auto result = solver.eigenvalues();
         
-        if (c > Config::EPSILON || c < -Config::EPSILON) {
-            eig2 = 1.0 - exp(-3.8 * SQ(Config::C0 / c));
+        // make sure there are no complext eigenvalues
+        assert(result[0].imag() < abs(Config::EPSILON) &&
+               result[1].imag() < abs(Config::EPSILON) &&
+               result[2].imag() < abs(Config::EPSILON));
+        
+        double eig2 = 0.0, eig3 = 0.0;
+        auto c = computeC(result[0].real(), result[1].real(), result[2].real());
+        
+        if ((get<0>(c) > Config::EPSILON || get<0>(c) < -Config::EPSILON) &&
+            (get<1>(c) > Config::EPSILON || get<1>(c) < -Config::EPSILON)) {
+            eig2 = 1.0 - exp(-3.8 * SQ(Config::C0 / get<0>(c)));
+            eig3 = 1.0 - exp(-3.8 * SQ(Config::C0 / get<1>(c)));
         } else {
             eig2 = 1.0;
+            eig3 = 1.0;
         }
         
         s_edgeCenters[e].eig1 = 1.0;
         s_edgeCenters[e].eig2 = eig2;
-        s_edgeCenters[e].eig3 = 0.0;
-        s_edgeCenters[e].eigVec1 = get<2>(result);
-        s_edgeCenters[e].eigVec1.push_back(0);
-        s_edgeCenters[e].eigVec2 = get<3>(result);
-        s_edgeCenters[e].eigVec2.push_back(0);
-        s_edgeCenters[e].eigVec3 = {0, 0, 1};
+        s_edgeCenters[e].eig3 = eig3;
+        s_edgeCenters[e].eigVec1 = vector<double>({
+            solver.eigenvectors()(0, 0).real(),
+            solver.eigenvectors()(0, 1).real(),
+            solver.eigenvectors()(0, 2).real()
+        });
+        s_edgeCenters[e].eigVec2 = vector<double>({
+            solver.eigenvectors()(1, 0).real(),
+            solver.eigenvectors()(1, 1).real(),
+            solver.eigenvectors()(1, 2).real()
+        });
+        s_edgeCenters[e].eigVec3 = vector<double>({
+            solver.eigenvectors()(2, 0).real(),
+            solver.eigenvectors()(2, 1).real(),
+            solver.eigenvectors()(2, 2).real()
+        });
     }
     
     //    PPMImage im(301, 301);
