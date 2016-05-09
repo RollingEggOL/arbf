@@ -67,7 +67,7 @@ public:
         return m_maxRaw;
     }
     
-    void setMaxIntensity(int max) {
+    void setMaxIntensity(double max) {
         m_maxRaw = max;
     }
     
@@ -96,7 +96,7 @@ private:
 	double *m_data;
     int m_x; // # of cols
     int m_y; // # of rows
-    int m_maxRaw; // maximum intensity
+    double m_maxRaw; // maximum intensity
     std::string m_path; // image path
 };
 

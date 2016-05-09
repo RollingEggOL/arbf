@@ -13,7 +13,7 @@
 
 using namespace std;
 
-PPMImage::PPMImage() : m_data(nullptr), m_x(0), m_y(0), m_maxRaw(0), m_path(string()) {}
+PPMImage::PPMImage() : m_data(nullptr), m_x(0), m_y(0), m_maxRaw(0.0), m_path(string()) {}
 
 PPMImage::PPMImage(int x, int y) {
     assert((x >= 0) && (y >= 0));
@@ -25,7 +25,7 @@ PPMImage::PPMImage(int x, int y) {
     m_path = string();
 }
 
-PPMImage::PPMImage(const char *path) : m_data(nullptr), m_x(0), m_y(0), m_maxRaw(0) {
+PPMImage::PPMImage(const char *path) : m_data(nullptr), m_x(0), m_y(0), m_maxRaw(0.0) {
     assert(path != nullptr);
     m_path = string(path);
     read();
@@ -96,7 +96,7 @@ void PPMImage::read() {
         
         ungetc(c, fp);
         
-        if (fscanf(fp, "%d %d\n%d\n", &m_x, &m_y, &m_maxRaw) != 3) {
+        if (fscanf(fp, "%d %d\n%lf\n", &m_x, &m_y, &m_maxRaw) != 3) {
             fprintf(stderr, "ERROR: failed to read width/height/max\n");
             exit(EXIT_FAILURE);
         }
@@ -126,7 +126,7 @@ void PPMImage::write() const {
         exit(EXIT_FAILURE);
     }
         
-    fprintf(fp, "P6\n%d %d\n%d\n", m_x, m_y, m_maxRaw);
+    fprintf(fp, "P6\n%d %d\n%lf\n", m_x, m_y, m_maxRaw);
 
     for (int j = 0; j < m_y; j++) {
         for (int i = 0; i < m_x; i++) {
