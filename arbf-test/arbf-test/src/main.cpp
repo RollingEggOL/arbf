@@ -41,8 +41,7 @@ using namespace Eigen;
 //    google::SetLogDestination(google::FATAL, fatal_log.c_str());
 //}
 
-int main(int argc, const char * argv[])
-{
+int main(int argc, const char **argv) {
 	if (argc != 5) {
 		fprintf(stderr, "ERROR: incorrect command format. Usage: arbf-test <proj_dir> <mesh_filename> <neighborhood_size> <model_dimension>\n");
 		return EXIT_FAILURE;
@@ -84,7 +83,7 @@ int main(int argc, const char * argv[])
     
     // read mesh
     start = total = clock();
-    string file_path = PROJ_DIR + argv[2];
+    string file_path = PROJ_DIR + string(argv[2]);
     TriMesh* mesh = new TriMesh(file_path.c_str());
     printf("nv = %d, nf = %d\n", mesh->getNumVertices(), mesh->getNumFaces());
     span = clock() - start;

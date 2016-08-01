@@ -20,4 +20,4 @@ add_executable(arbf-test ${DIR_SRC})
 set(CMAKE_BUILD_TYPE Release)
 
 # extra compilation flags
-add_definitions("-std=c++11 -O3")
+add_definitions("-std=c++11 -O3 -Wno-deprecated-register")
