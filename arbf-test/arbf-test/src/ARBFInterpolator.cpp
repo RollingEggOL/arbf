@@ -8,186 +8,188 @@
 
 #include <cassert>
 #include <cstdio>
+#include <cstdlib>
+#include <cmath>
 #include <iostream>
 #include <cfenv> // for std::fesetround()
+#include <tuple>
+#include <vector>
 #include <unordered_set>
 #include <Eigen/Eigenvalues>
 #include "../include/Config.h"
 #include "../include/ARBFInterpolator.h"
 
-using namespace std;
-using namespace Eigen;
+// ARBFInterpolator implementations
+ARBFInterpolator::ARBFInterpolator(): m_basis(nullptr), m_hasCoeffSolved(false) {}
 
-Vertex* ARBFInterpolator::s_centers = nullptr;
-Vertex* ARBFInterpolator::s_edgeCenters = nullptr;
-const TriMesh* ARBFInterpolator::s_mesh = nullptr;
-BasisType ARBFInterpolator::s_basis = BasisType::MQ;
-vector<Matrix3d> ARBFInterpolator::s_T;
-vector<vector<int>> ARBFInterpolator::s_vf_1ring;
-vector<set<int>> ARBFInterpolator::s_vv_1ring;
-vector<set<int>> ARBFInterpolator::s_ff_1ring;
-vector<vector<int>> ARBFInterpolator::s_vf_2ring;
-vector<set<int>> ARBFInterpolator::s_vv_2ring;
-vector<set<int>> ARBFInterpolator::s_ff_2ring;
-
-ARBFInterpolator::ARBFInterpolator() {}
-
-// MARK: Getters/Setters
-void ARBFInterpolator::setMesh(const TriMesh *mesh) {
-    s_mesh = mesh;
+ARBFInterpolator::~ARBFInterpolator() {
+//    delete [] m_centers;
+//    m_centers = nullptr;
+//    delete [] m_edgeCenters;
+//    m_edgeCenters = nullptr;
+//    delete [] m_bodyCenters;
+//    m_bodyCenters = nullptr;
 }
 
-inline vector<vector<int> >& ARBFInterpolator::getNeigborVertexFace1Ring() {
-    return s_vf_1ring;
+const std::vector<Vertex>& ARBFInterpolator::getTriangleCenters() const {
+    return m_centers;
 }
 
-inline void ARBFInterpolator::setNeighborVertexFace1Ring(const vector<vector<int> > &vf) {
-    s_vf_1ring = vf;
+const std::vector<Vertex>& ARBFInterpolator::getEdgeCenters() const {
+    return m_edgeCenters;
 }
 
-inline vector<set<int> >& ARBFInterpolator::getNeighborVertexVertex1Ring() {
-    return s_vv_1ring;
+//const std::vector<Vertex>& ARBFInterpolator::getTetrahedronCenters() const {
+//    return m_tetrahedronCenters;
+//}
+
+ARBFInterpolator::InterpolateResult ARBFInterpolator::getResult() const {
+    return m_result;
 }
 
-inline void ARBFInterpolator::setNeighborVertexVertex1Ring(const vector<set<int> > &vv) {
-    s_vv_1ring = vv;
+void ARBFInterpolator::setMesh(Mesh * mesh) {
+    m_mesh = mesh;
 }
 
-inline vector<set<int> >& ARBFInterpolator::getNeighborFaceFace1Ring() {
-    return s_ff_1ring;
+void ARBFInterpolator::setBasisFunction(BasisFunction *basisFunction) {
+    m_basis = basisFunction;
 }
 
-inline void ARBFInterpolator::setNeighborFaceFace1Ring(vector<set<int> > &ff) {
-    s_ff_1ring = ff;
-}
+void ARBFInterpolator::calculateTriangleCenters() {
+    m_centers.resize(m_mesh->getNumFaces());
 
-inline vector<vector<int> >& ARBFInterpolator::getNeigborVertexFace2Ring() {
-    return s_vf_2ring;
-}
+    for (unsigned f = 0; f < m_mesh->getNumFaces(); ++f) {
+        int a = m_mesh->getFaces()[f].a;
+        int b = m_mesh->getFaces()[f].b;
+        int c = m_mesh->getFaces()[f].c;
 
-inline void ARBFInterpolator::setNeighborVertexFace2Ring(const vector<vector<int> > &vf) {
-    s_vf_2ring = vf;
-}
+        // compute coordinates
+        m_centers[f].x = (m_mesh->getVertices()[a].x + m_mesh->getVertices()[b].x + m_mesh->getVertices()[c].x) / 3.0;
+        m_centers[f].y = (m_mesh->getVertices()[a].y + m_mesh->getVertices()[b].y + m_mesh->getVertices()[c].y) / 3.0;
+        m_centers[f].z = (m_mesh->getVertices()[a].z + m_mesh->getVertices()[b].z + m_mesh->getVertices()[c].z) / 3.0;
 
-inline vector<set<int> >& ARBFInterpolator::getNeighborVertexVertex2Ring() {
-    return s_vv_2ring;
-}
+        // compute intensity
+        m_centers[f].intensity = m_mesh->getFaces()[f].intensity;
 
-inline void ARBFInterpolator::setNeighborVertexVertex2Ring(const vector<set<int> > &vv) {
-    s_vv_2ring = vv;
-}
+        // assign eigenvalues and eigenvectors
+        m_centers[f].eig1 = 0;
+        m_centers[f].eig2 = 0;
+        m_centers[f].eig3 = 0;
+        m_centers[f].eigVec1 = {1, 0, 0};
+        m_centers[f].eigVec2 = {0, 1, 0};
+        m_centers[f].eigVec3 = {0, 0, 1};
+    }
 
-inline vector<set<int> >& ARBFInterpolator::getNeighborFaceFace2Ring() {
-    return s_ff_2ring;
-}
+    if (Config::isDebugEnabled) {
+        std::string filename = "DEBUG.centers.txt";
+        FILE *fp = nullptr;
 
-inline void ARBFInterpolator::setNeighborFaceFace2Ring(vector<set<int> > &ff) {
-    s_ff_2ring = ff;
-}
+        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
+            fprintf(stderr, "WARNING: open DEBUG.centers.txt failed.\n");
+            return;
+        }
 
-// MARK: Shape Functions
-inline double ARBFInterpolator::s_basisMQ(double r) {
-    return std::sqrt(SQ(r) + SQ(0));
-}
+        fprintf(fp, "X Y Z INTENSITY\n");
 
-inline double ARBFInterpolator::s_basisIMQ(double r) {
-    return 1.0 / (sqrt(SQ(r) + SQ(1.8)));
-}
+        for (int f = 0; f < m_mesh->getNumFaces(); ++f) {
+            fprintf(fp, "%lf %lf %lf %lf\n", m_centers[f].x, m_centers[f].y, m_centers[f].z, m_centers[f].intensity);
+        }
 
-inline double ARBFInterpolator::s_basisGaussian(double r) {
-    double c = 0.01;
-    return exp(-SQ(c*r));
-}
-
-inline double ARBFInterpolator::s_basisTPS(double r) {
-    if (abs(r) < Config::EPSILON)
-        return 0;
-    else
-        return SQ(r) * log(r);
-}
-
-// MARK: ARBF Related
-inline double ARBFInterpolator::s_computeC(double mu1, double mu2) {
-    double sumMu = mu1 + mu2;
-    
-    if (sumMu > Config::EPSILON || sumMu < -Config::EPSILON) {
-        return abs(mu1 - mu2) / sumMu;
-    } else {
-        return 1.0;
+        fclose(fp);
     }
 }
 
-inline double ARBFInterpolator::s_computeWeight(double r) {
-    return exp(-SQ(r) / SQ(30.0));
-}
+void ARBFInterpolator::calculateEdgeCenters() {
+    m_edgeCenters.resize(m_mesh->getNumEdges());
 
-inline double ARBFInterpolator::s_phi(double r) {
-    switch (s_basis) {
-        case MQ:
-        default:
-            return s_basisMQ(r);
-        case IMQ:
-            return s_basisIMQ(r);
-        case Gaussian:
-            return s_basisGaussian(r);
-        case TPS:
-            return s_basisTPS(r);
+    int e = 0;
+    std::unordered_set<Edge, edgeHasher, edgeComparator>::const_iterator it;
+    for (it = m_mesh->getEdges().begin(); it != m_mesh->getEdges().end(); it++, e++) {
+        int a = it->a;
+        int b = it->b;
+        m_edgeCenters[e].x = m_mesh->getVertices()[a].x + 0.5 * (m_mesh->getVertices()[b].x - m_mesh->getVertices()[a].x);
+        m_edgeCenters[e].y = m_mesh->getVertices()[a].y + 0.5 * (m_mesh->getVertices()[b].y - m_mesh->getVertices()[a].y);
+        m_edgeCenters[e].z = m_mesh->getVertices()[a].z + 0.5 * (m_mesh->getVertices()[b].z - m_mesh->getVertices()[a].z);
+        m_edgeCenters[e].intensity = it->intensity;
+
+        double dx = m_mesh->getVertices()[b].x - m_mesh->getVertices()[a].x;
+        double dy = m_mesh->getVertices()[b].y - m_mesh->getVertices()[a].y;
+        double dz = m_mesh->getVertices()[b].z - m_mesh->getVertices()[a].z;
+        double norm = std::sqrt(SQ(dx) + SQ(dy) + SQ(dz));
+        double gradX = dx / norm;
+        double gradY = dy / norm;
+        double gradZ = dz / norm;
+        Eigen::Matrix3d mEdge;
+//        Eigen::Matrix2d mEdge;
+        mEdge(0, 0) = gradX * gradX;
+        mEdge(0, 1) = gradX * gradY;
+        mEdge(0, 2) = gradX * gradZ;
+        mEdge(1, 0) = gradY * gradX;
+        mEdge(1, 1) = gradY * gradY;
+        mEdge(1, 2) = gradY * gradZ;
+        mEdge(2, 0) = gradZ * gradX;
+        mEdge(2, 1) = gradZ * gradY;
+        mEdge(2, 2) = gradZ * gradZ;
+
+        Eigens3d eigens = computeEigens(mEdge); // compute eigenvalues and eigenvectors
+        Eigenvalues3d &eigenvalues = std::get<0>(eigens);
+        Eigenvectors3d &eigenvectors = std::get<1>(eigens);
+        rescaleEigenvalues(eigenvalues);
+
+        m_edgeCenters[e].eig1 = eigenvalues[0];
+        m_edgeCenters[e].eig2 = eigenvalues[1];
+        m_edgeCenters[e].eig3 = eigenvalues[2];
+        m_edgeCenters[e].eigVec1 = { eigenvectors[0][0], eigenvectors[0][1], eigenvectors[0][2] };
+        m_edgeCenters[e].eigVec2 = { eigenvectors[1][0], eigenvectors[1][1], eigenvectors[1][2] };
+        m_edgeCenters[e].eigVec3 = { eigenvectors[2][0], eigenvectors[2][1], eigenvectors[2][2] };
+    }
+
+    //    PPMImage im(301, 301);
+    //    im.setMaxIntensity(255);
+    //    im.setPath("/Users/keliu/Documents/projects/arbf/arbf-test/arbf-test/edge.ppm");
+    //    double* data = new double[301*301];
+    //    memset(data, 0, sizeof(double) * 301 * 301);
+    //    for (int j = 0; j < 301; j++) {
+    //        for (int i = 0; i < 301; i++) {
+    //            for (int e = 0;  e < m_mesh->getNumEdges(); e++) {
+    //                if (m_edgeCenters[e].x * 100 == i && m_edgeCenters[e].y * 100 == j) {
+    //                    data[j*301+i] = 255;
+    //                }
+    //            }
+    //        }
+    //    }
+    //    im.setImageData(data);
+    //    im.write();
+
+    if (Config::isDebugEnabled) {
+        std::string filename = "DEBUG.edge_centers.txt";
+        FILE *fp = nullptr;
+
+        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
+            fprintf(stderr, "WARNING: open DEBUG.edge_centers.txt failed.\n");
+            return;
+        }
+
+        fprintf(fp, "X Y INTENSITY\n");
+
+        for (auto center: m_edgeCenters) {
+            fprintf(fp, "%lf %lf %lf %lf\n", center.x, center.y, center.z, center.intensity);
+        }
+
+        fclose(fp);
     }
 }
 
-tuple<double, double, vector<double>, vector<double>> ARBFInterpolator::s_computeEigen(const Eigen::Matrix2d &m) {
-    assert(abs(m(0, 1) - m(1, 0)) < Config::EPSILON); // m should be symmetric
-    
-    // compute eigenvalues
-    // matrix looks like
-    //      | a    c|
-    // A =  |       |
-    //      | c    b|
-    
-    double a = m(0, 0), b = m(1, 1), c = m(0, 1);
-    double lambda1 = 0.5 * (a + b) + sqrt(SQ(c) + 0.25 * SQ(a - b));
-    double lambda2 = 0.5 * (a + b) - sqrt(SQ(c) + 0.25 * SQ(a - b));
-    
-    // compute eigenvectors
-    double v1[2], v2[2];
-    double u1 = 0.0, w1 = 0.0;
-    
-    if (abs(lambda1 - a) > Config::EPSILON) {
-        // lambda1 != a
-        u1 = c;
-        w1 = lambda1 - a;
-    } else if (abs(lambda1 - b) > Config::EPSILON) {
-        // lambda1 != b
-        u1 = lambda1 - b;
-        w1 = c;
-    } else {
-        v1[0] = 1.0;
-        v1[1] = 0.0;
-        v2[0] = v1[1];
-        v2[1] = -v1[0];
-    }
-    
-    double p = sqrt(SQ(u1) + SQ(w1));
-    v1[0] = u1 / p;
-    v1[1] = w1 / p;
-    v2[0] = v1[1];
-    v2[1] = -v1[0];
-    
-    return make_tuple(lambda1, lambda2,
-                      vector<double>(v1, v1 + sizeof(v1) / sizeof(double)),
-                      vector<double>(v2, v2 + sizeof(v2) / sizeof(double)));
-}
+void ARBFInterpolator::computeEdgeMetrics() {
+    m_T.resize(m_mesh->getNumEdges());
 
-void ARBFInterpolator::computeMetric() {
-    s_T.resize(s_mesh->getNumEdges());
-    
-    for (int e = 0; e < s_mesh->getNumEdges(); e++) {
-        const Vertex& edgeCenter = s_edgeCenters[e];
+    for (int e = 0; e < m_mesh->getNumEdges(); e++) {
+        const Vertex& edgeCenter = m_edgeCenters[e];
         //             |lambda1 0      | |v1T|
         // T = [v1 v2] |               | |   |
         //             |0       lambda2| |v2T|
-        
-        Matrix3d t1, t2;
+
+        Eigen::Matrix3d t1, t2;
         t1(0, 0) = edgeCenter.eigVec1[0];
         t1(1, 0) = edgeCenter.eigVec1[1];
         t1(2, 0) = edgeCenter.eigVec1[2];
@@ -197,7 +199,7 @@ void ARBFInterpolator::computeMetric() {
         t1(0, 2) = edgeCenter.eigVec3[0];
         t1(1, 2) = edgeCenter.eigVec3[1];
         t1(2, 2) = edgeCenter.eigVec3[2];
-        
+
         t2(0, 0) = edgeCenter.eig1;
         t2(0, 1) = 0.0;
         t2(0, 2) = 0.0;
@@ -207,287 +209,203 @@ void ARBFInterpolator::computeMetric() {
         t2(2, 0) = 0.0;
         t2(2, 1) = 0.0;
         t2(2, 2) = edgeCenter.eig3;
-        
-        s_T[e] = t1 * t2;
-        s_T[e] = s_T[e] * t1.transpose();
+
+        // Use definition: tensor_result = t1 * t2 * t1.transpose()
+        m_T[e] = t1 * t2;
+        m_T[e] = m_T[e] * t1.transpose();
     }
 }
 
-bool ARBFInterpolator::s_isInTriangle(const double* x, int triangleID) {
-    const Vertex &a = s_mesh->getVertices()[s_mesh->getFaces()[triangleID].a];
-    const Vertex &b = s_mesh->getVertices()[s_mesh->getFaces()[triangleID].b];
-    const Vertex &c = s_mesh->getVertices()[s_mesh->getFaces()[triangleID].c];
-    
-    Eigen::Vector2d ab(b.x - a.x, b.y - a.y);
-    Eigen::Vector2d bc(c.x - b.x, c.y - b.y);
-    Eigen::Vector2d ca(a.x - c.x, a.y - c.y);
-    Eigen::Vector2d ax(x[0] - a.x, x[1] - a.y);
-    Eigen::Vector2d bx(x[0] - b.x, x[1] - b.y);
-    Eigen::Vector2d cx(x[0] - c.x, x[1] - c.y);
-    
-    double area = 0.0, area1 = 0.0, area2 = 0.0, area3 = 0.0;
-    double cosTheta = ab.dot(-ca) / (ab.norm() * ca.norm());
-    area = 0.5 * ab.norm() * ca.norm() * sqrt(1.0 - SQ(cosTheta));
-    double cosTheta1 = ab.dot(ax) / (ab.norm() * ax.norm());
-    area1 = 0.5 * ab.norm() * ax.norm() * sqrt(1.0 - SQ(cosTheta1));
-    double cosTheta2 = cx.dot(ca) / (cx.norm() * ca.norm());
-    area2 = 0.5 * cx.norm() * ca.norm() * sqrt(1.0 - SQ(cosTheta2));
-    double cosTheta3 = bx.dot(bc) / (bx.norm() * bc.norm());
-    area3 = 0.5 * bx.norm() * bc.norm() * sqrt(1.0 - SQ(cosTheta3));
-    
-    if (isnan(area)) area = 0.0;
-    if (isnan(area1)) area1 = 0.0;
-    if (isnan(area2)) area2 = 0.0;
-    if (isnan(area3)) area3 = 0.0;
-    
-    if (abs(area1 + area2 + area3 - area) < Config::EPSILON)
-        return true;
-    else
-        return false;
+
+inline double ARBFInterpolator::m_computeWeight(double r) {
+    return exp(-SQ(r) / SQ(30.0));
 }
 
-inline double ARBFInterpolator::s_computeDistance(const double *v0, const double *v1, const Matrix3d& T) {
-    RowVector3d dis(v0[0]-v1[0], v0[1]-v1[1], v0[2]-v1[2]);
-    RowVector3d tmp = dis * T;
-    return sqrt(tmp(0)*dis(0) + tmp(1)*dis(1) + tmp(2)*dis(2));
-//    return sqrt(SQ(v1[0]-v0[0]) + SQ(v1[1]-v0[1]) + SQ(v1[2]-v0[2]));
-}
+void ARBFInterpolator::interpolate(unsigned numEvalPoints) {
+    if (!m_hasCoeffSolved) {
+        fprintf(stderr, "Error: coefficients are not solved out yet.");
+        exit(EXIT_FAILURE);
+    }
 
-// MARK: RBF Related
-tuple<double*, double, int, int, int> ARBFInterpolator::interpolate() {
-    const int NP = 160000; // number of evaluation points
-    int dimX = 0, dimY = 0, dimZ = 0;
-    
-    if (Config::dim == 2) {
-        dimX = (int) sqrt(NP);
-        dimY = (int) sqrt(NP);
-    } else {
-        dimX = round(pow(NP, 1.0/3.0));
-        dimY = round(pow(NP, 1.0/3.0));
-        dimZ = round(pow(NP, 1.0/3.0));
+//    const unsigned NP = 160000; // number of evaluation points
+    unsigned dimX = 0, dimY = 0, dimZ = 0;
+    std::vector<double> x, y, z;
+    unsigned nv = m_mesh->getNumVertices(), nf = m_mesh->getNumFaces(), ne = m_mesh->getNumEdges();
+    unsigned dim = 0; // dimension of distance matrix
+    std::vector<double> intensities(numEvalPoints, 0.0); // solution
+
+    switch (Config::problemDim) {
+        case 2:
+            dimX = (unsigned) std::sqrt(numEvalPoints);
+            dimY = (unsigned) std::sqrt(numEvalPoints);
+            x = linspace(m_mesh->getMinX(), m_mesh->getMaxX(), dimX);
+            y = linspace(m_mesh->getMinY(), m_mesh->getMaxY(), dimY);
+            dim = nv + nf + ne;
+
+            for (unsigned j = 0; j < dimY; j++) {
+                for (unsigned i = 0; i < dimX; i++) {
+                    double p0[] = { x[i], y[j], 0.0 };
+                    double intensity = 0;
+
+                    for (unsigned l = 0; l < dim; l++) {
+                        double r = 0.0;
+
+                        if (l < nv) {
+                            double p1[] = { m_mesh->getVertices()[l].x, m_mesh->getVertices()[l].y, m_mesh->getVertices()[l].z };
+                            r = m_computeDistance(p0, p1, Eigen::Matrix3d::Identity());
+                        } else if (l < (nv + nf)) {
+                            double p1[] = { m_centers[l - nv].x, m_centers[l - nv].y, m_centers[l - nv].z };
+                            r = m_computeDistance(p0, p1, Eigen::Matrix3d::Identity());
+                        } else {
+                            double p1[] = { m_edgeCenters[l - nv - nf].x, m_edgeCenters[l - nv - nf].y, m_edgeCenters[l - nv - nf].z };
+                            r = m_computeDistance(p0, p1, m_T[l - nv - nf]);
+                        }
+
+                        intensity += (m_basis->phi(r) * m_coeff(l));
+                    }
+
+                    intensities[j*dimX+i] = intensity;
+                }
+            }
+
+//            std::cout << "\n----- Intensity at face centers -----\n";
+//            for (int j = 0; j < dimY; j++) {
+//                for (int i = 0; i < dimX; i++) {
+//                    for (int v = 0; v < m_mesh->getNumVertices(); v++) {
+//                        if (std::abs(x[i] - m_mesh->getVertices()[v].x) < 1e-6 && std::abs(y[j] - m_mesh->getVertices()[v].y) < 1e-6) {
+//                            printf("\tAt vert[%d][%lf, %lf], intensity[%d, %d][%lf, %lf] = %lf\n",
+//                                   v, m_mesh->getVertices()[v].x, m_mesh->getVertices()[v].y, i, j,
+//                                   x[i], y[j], intensities[j*dimX+i]);
+//                            break;
+//                        }
+//                    }
+//
+//                    for (int f = 0; f < m_mesh->getNumFaces(); f++) {
+//                        if (std::abs(x[i] - getTriangleCenters()[f].x) < 1e-6 && std::abs(y[j] - getTriangleCenters()[f].y) < 1e-6) {
+//                            printf("\tAt face[%d][%lf, %lf], intensity[%d, %d][%lf, %lf] = %lf\n",
+//                                   f, getTriangleCenters()[f].x, getTriangleCenters()[f].y, i, j,
+//                                   x[i], y[j], intensities[j*dimX+i]);
+//                            break;
+//                        }
+//                    }
+//
+//                    for (int e = 0; e < m_mesh->getNumEdges(); e++) {
+//                        if (std::abs(x[i] - getEdgeCenters()[e].x) < 1e-6 && std::abs(y[j] - getEdgeCenters()[e].y) < 1e-6) {
+//                            printf("\tAt edgeCenter[%d][%lf, %lf], intensity[%d, %d][%lf, %lf] = %lf\n",
+//                                   e, getEdgeCenters()[e].x, getEdgeCenters()[e].y, i, j,
+//                                   x[i], y[j], intensities[j*dimX+i]);
+//                            break;
+//                        }
+//                    }
+//                }
+//            }
+//            std::cout << "\n" << "-----" << std::endl;
+            break;
+        case 3:
+        default:
+            dimX = (unsigned) std::round(std::pow(numEvalPoints, 1.0/3.0));
+            dimY = (unsigned) std::round(std::pow(numEvalPoints, 1.0/3.0));
+            dimZ = (unsigned) std::round(std::pow(numEvalPoints, 1.0/3.0));
+            x = linspace(m_mesh->getMinX(), m_mesh->getMaxX(), dimX);
+            y = linspace(m_mesh->getMinY(), m_mesh->getMaxY(), dimY);
+            z = linspace(m_mesh->getMinZ(), m_mesh->getMaxZ(), dimZ);
+            dim = nv + nf + 1;
+
+            //    cout << "\nx = ";
+            //    copy(x.begin(), x.end(), ostream_iterator<double>(cout, ", "));
+            //    cout << "\ny = ";
+            //    copy(y.begin(), y.end(), ostream_iterator<double>(cout, ", "));
+            //    cout << "\nz = ";
+            //    copy(z.begin(), z.end(), ostream_iterator<double>(cout, ", "));
+
+            double centerX = (m_mesh->getMinX() + m_mesh->getMaxX()) / 2.0,
+                    centerY = (m_mesh->getMinY() + m_mesh->getMaxY()) / 2.0,
+                    centerZ = (m_mesh->getMinZ() + m_mesh->getMaxZ()) / 2.0;
+
+            for (int k = 0; k < dimZ; k++) {
+                for (int j = 0; j < dimY; j++) {
+                    for (int i = 0; i < dimX; i++) {
+                        double p0[] = { x[i], y[j], z[k] };
+                        double intensity = 0;
+                        for (int l = 0; l < dim; l++) {
+                            double p1[] = { centerX, centerY, centerZ };
+
+                            if (l < nv) {
+                                p1[0] = m_mesh->getVertices()[l].x;
+                                p1[1] = m_mesh->getVertices()[l].y;
+                                p1[2] = m_mesh->getVertices()[l].z;
+                            } else if (l < (nv + nf)) {
+                                p1[0] = m_centers[l - nv].x;
+                                p1[1] = m_centers[l - nv].y;
+                                p1[2] = m_centers[l - nv].z;
+                            }
+
+                            double r = m_computeDistance(p0, p1, Eigen::Matrix3d::Identity());
+                            intensity += (m_basis->phi(r) * m_coeff(l));
+                        }
+                        intensities[k*dimX*dimY + j*dimX + i] = intensity;
+                    }
+                }
+            }
+
+//            std::cout << "\n----- Intensity at face centers -----\n";
+//            for (int k = 0; k < dimZ; k++) {
+//                for (int j = 0; j < dimY; j++) {
+//                    for (int i = 0; i < dimX; i++) {
+//                        for (int v = 0; v < m_mesh->getNumVertices(); v++) {
+//                            if (std::abs(x[i] - m_mesh->getVertices()[v].x) < 1e-6 &&
+//                                std::abs(y[j] - m_mesh->getVertices()[v].y) < 1e-6 &&
+//                                std::abs(z[k] - m_mesh->getVertices()[v].z) < 1e-6)
+//                            {
+//                                printf("\tAt vert[%d][%lf, %lf, %lf], intensity[%d, %d, %d][%lf, %lf, %lf] = %lf\n",
+//                                       v, m_mesh->getVertices()[v].x, m_mesh->getVertices()[v].y, m_mesh->getVertices()[v].z, i, j, k,
+//                                       x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
+//                                break;
+//                            }
+//                        }
+//
+//                        for (int f = 0; f < m_mesh->getNumFaces(); f++) {
+//                            if (std::abs(x[i] - getTriangleCenters()[f].x) < 1e-6 &&
+//                                std::abs(y[j] - getTriangleCenters()[f].y) < 1e-6 &&
+//                                std::abs(z[k] - getTriangleCenters()[f].z) < 1e-6)
+//                            {
+//                                printf("\tAt face[%d][%lf, %lf, %lf], intensity[%d, %d, %d][%lf, %lf, %lf] = %lf\n",
+//                                       f, getTriangleCenters()[f].x, getTriangleCenters()[f].y, getTriangleCenters()[f].z, i, j, k,
+//                                       x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
+//                                break;
+//                            }
+//                        }
+//
+//                        if (std::abs(x[i] - (m_mesh->getMinX()+m_mesh->getMaxX())/2.0) < 1e-6 &&
+//                            std::abs(y[j] - (m_mesh->getMinY()+m_mesh->getMaxY())/2.0) < 1e-6 &&
+//                            std::abs(z[k] - (m_mesh->getMinZ()+m_mesh->getMaxZ())/2.0) < 1e-6)
+//                        {std::
+//                            printf("\tAt center[%lf, %lf, %lf], intensity[%d, %d, %d][%lf, %lf, %lf] = %lf\n",
+//                                   (m_mesh->getMinX()+m_mesh->getMaxX())/2.0,
+//                                   (m_mesh->getMinY()+m_mesh->getMaxY())/2.0,
+//                                   (m_mesh->getMinZ()+m_mesh->getMaxZ())/2.0, i, j, k,
+//                                   x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
+//                        }
+//                    }
+//                }
+//            }
+//            std::cout << "\n" << "-----" << std::endl;
     }
-    
-    vector<double> x, y, z;
-    
-    if (Config::dim == 2) {
-        x = linspace(s_mesh->getMinX(), s_mesh->getMaxX(), sqrt(NP));
-        y = linspace(s_mesh->getMinY(), s_mesh->getMaxY(), sqrt(NP));
-    } else {
-        x = linspace(s_mesh->getMinX(), s_mesh->getMaxX(), round(pow(NP, 1.0/3.0)));
-        y = linspace(s_mesh->getMinY(), s_mesh->getMaxY(), round(pow(NP, 1.0/3.0)));
-        z = linspace(s_mesh->getMinZ(), s_mesh->getMaxZ(), round(pow(NP, 1.0/3.0)));
-    }
-    
-    const int NV = s_mesh->getNumVertices(), NF = s_mesh->getNumFaces(), NE = s_mesh->getNumEdges();
-    int DIM = 0; // distance matrix dimension
-    
-    if (Config::dim == 2) {
-        DIM = NV + NF + NE;
-    } else {
-        DIM = NV + NF + 1; // with additional tetrahedron center
-    }
-    
-    //    cout << "\nx = ";
-    //    copy(x.begin(), x.end(), ostream_iterator<double>(cout, ", "));
-    //    cout << "\ny = ";
-    //    copy(y.begin(), y.end(), ostream_iterator<double>(cout, ", "));
-    //    cout << "\nz = ";
-    //    copy(z.begin(), z.end(), ostream_iterator<double>(cout, ", "));
-    
-    MatrixXd ma(DIM, DIM); // distance matrix
-    VectorXd u(DIM); // intensities
-    VectorXd coeff(DIM); // weight
-    double *intensities = new double[NP]; // solution
-    memset(intensities, 0, sizeof(double) * NP);
-    buildMatrix(DIM, NV, NF, ma, u); // assemble distance matrix and vector
-    
+
+
     //    cout << "\nma = \n";
     //    cout << ma << "\n" << "-----" << endl;
     //    cout << ma - ma.transpose() << "-----" << endl;
     //    cout << u << "\n" << "-----" << endl;
-    
-    coeff = ma.fullPivLu().solve(u); // solve interpolation coefficents
-                                     //    coeff = ma.inverse() * u;
-                                     //    cout << "\ncoeff = \n" << coeff << "\n" << "-----" << endl;
-                                     //    cout << "\ncoeff.sum() = " << coeff.sum() << endl;
-    
-    if (Config::dim == 2) {
-        for (int j = 0; j < dimY; j++) {
-            for (int i = 0; i < dimX; i++) {
-                double p0[] = { x[i], y[j], 0.0 };
-                double intensity = 0;
-                for (int l = 0; l < DIM; l++) {
-                    double p1[] = { -1, -1, -1 };
-                    double r = 0.0;
-                    
-                    if (l < NV) {
-                        p1[0] = s_mesh->getVertices()[l].x;
-                        p1[1] = s_mesh->getVertices()[l].y;
-                        p1[2] = s_mesh->getVertices()[l].z;
-                        r = s_computeDistance(p0, p1, Matrix3d::Identity());
-                    } else if (l < (NV + NF)) {
-                        p1[0] = getCenters()[l-NV].x;
-                        p1[1] = getCenters()[l-NV].y;
-                        p1[2] = getCenters()[l-NV].z;
-                        r = s_computeDistance(p0, p1, Matrix3d::Identity());
-                    } else {
-                        p1[0] = getEdgeCenters()[l-NV-NF].x;
-                        p1[1] = getEdgeCenters()[l-NV-NF].y;
-                        p1[2] = getEdgeCenters()[l-NV-NF].z;
-                        r = s_computeDistance(p0, p1, s_T[l-NV-NF]);
-                    }
-                    
-//                    r = s_computeDistance(p0, p1);
-                    intensity += (s_phi(r) * coeff(l));
-                }
-                intensities[j*dimX+i] = intensity;
-            }
-        }
-        
-        cout << "\n----- Intensity at face centers -----\n";
-        for (int j = 0; j < dimY; j++) {
-            for (int i = 0; i < dimX; i++) {
-                for (int v = 0; v < s_mesh->getNumVertices(); v++) {
-                    if (abs(x[i] - s_mesh->getVertices()[v].x) < 1e-6 && abs(y[j] - s_mesh->getVertices()[v].y) < 1e-6) {
-                        printf("\tAt vert[%d][%lf, %lf], intensity[%d, %d][%lf, %lf] = %lf\n",
-                               v, s_mesh->getVertices()[v].x, s_mesh->getVertices()[v].y, i, j,
-                               x[i], y[j], intensities[j*dimX+i]);
-                        break;
-                    }
-                }
-                
-                for (int f = 0; f < s_mesh->getNumFaces(); f++) {
-                    if (abs(x[i] - getCenters()[f].x) < 1e-6 && abs(y[j] - getCenters()[f].y) < 1e-6) {
-                        printf("\tAt face[%d][%lf, %lf], intensity[%d, %d][%lf, %lf] = %lf\n",
-                               f, getCenters()[f].x, getCenters()[f].y, i, j,
-                               x[i], y[j], intensities[j*dimX+i]);
-                        break;
-                    }
-                }
-                
-                for (int e = 0; e < s_mesh->getNumEdges(); e++) {
-                    if (abs(x[i] - getEdgeCenters()[e].x) < 1e-6 && abs(y[j] - getEdgeCenters()[e].y) < 1e-6) {
-                        printf("\tAt edgeCenter[%d][%lf, %lf], intensity[%d, %d][%lf, %lf] = %lf\n",
-                               e, getEdgeCenters()[e].x, getEdgeCenters()[e].y, i, j,
-                               x[i], y[j], intensities[j*dimX+i]);
-                        break;
-                    }
-                }
-            }
-        }
-        cout << "\n" << "-----" << endl;
-    }
-    // 3D
-    else {
-        for (int k = 0; k < dimZ; k++) {
-            for (int j = 0; j < dimY; j++) {
-                for (int i = 0; i < dimX; i++) {
-                    double p0[] = { x[i], y[j], z[k] };
-                    double intensity = 0;
-                    for (int l = 0; l < DIM; l++) {
-                        double p1[] = { -1, -1, -1 };
-                        
-                        if (l < NV) {
-                            p1[0] = s_mesh->getVertices()[l].x;
-                            p1[1] = s_mesh->getVertices()[l].y;
-                            p1[2] = s_mesh->getVertices()[l].z;
-                        } else if (l < (NV + NF)) {
-                            p1[0] = getCenters()[l-NV].x;
-                            p1[1] = getCenters()[l-NV].y;
-                            p1[2] = getCenters()[l-NV].z;
-                        } else {
-                            p1[0] = (s_mesh->getMinX() + s_mesh->getMaxX()) / 2.0;
-                            p1[1] = (s_mesh->getMinY() + s_mesh->getMaxY()) / 2.0;
-                            p1[2] = (s_mesh->getMinZ() + s_mesh->getMaxZ()) / 2.0;
-                        }
-                        
-                        double r = s_computeDistance(p0, p1, Matrix3d::Identity());
-                        intensity += (s_phi(r) * coeff(l));
-                    }
-                    intensities[k*dimX*dimY + j*dimX + i] = intensity;
-                }
-            }
-        }
-        
-        cout << "\n----- Intensity at face centers -----\n";
-        for (int k = 0; k < dimZ; k++) {
-            for (int j = 0; j < dimY; j++) {
-                for (int i = 0; i < dimX; i++) {
-                    for (int v = 0; v < s_mesh->getNumVertices(); v++) {
-                        if (abs(x[i] - s_mesh->getVertices()[v].x) < 1e-6 &&
-                            abs(y[j] - s_mesh->getVertices()[v].y) < 1e-6 &&
-                            abs(z[k] - s_mesh->getVertices()[v].z) < 1e-6)
-                        {
-                            printf("\tAt vert[%d][%lf, %lf, %lf], intensity[%d, %d, %d][%lf, %lf, %lf] = %lf\n",
-                                   v, s_mesh->getVertices()[v].x, s_mesh->getVertices()[v].y, s_mesh->getVertices()[v].z, i, j, k,
-                                   x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
-                            break;
-                        }
-                    }
-                    
-                    for (int f = 0; f < s_mesh->getNumFaces(); f++) {
-                        if (abs(x[i] - getCenters()[f].x) < 1e-6 &&
-                            abs(y[j] - getCenters()[f].y) < 1e-6 &&
-                            abs(z[k] - getCenters()[f].z) < 1e-6)
-                        {
-                            printf("\tAt face[%d][%lf, %lf, %lf], intensity[%d, %d, %d][%lf, %lf, %lf] = %lf\n",
-                                   f, getCenters()[f].x, getCenters()[f].y, getCenters()[f].z, i, j, k,
-                                   x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
-                            break;
-                        }
-                    }
-                    
-                    if (abs(x[i] - (s_mesh->getMinX()+s_mesh->getMaxX())/2.0) < 1e-6 &&
-                        abs(y[j] - (s_mesh->getMinY()+s_mesh->getMaxY())/2.0) < 1e-6 &&
-                        abs(z[k] - (s_mesh->getMinZ()+s_mesh->getMaxZ())/2.0) < 1e-6)
-                    {
-                        printf("\tAt center[%lf, %lf, %lf], intensity[%d, %d, %d][%lf, %lf, %lf] = %lf\n",
-                               (s_mesh->getMinX()+s_mesh->getMaxX())/2.0,
-                               (s_mesh->getMinY()+s_mesh->getMaxY())/2.0,
-                               (s_mesh->getMinZ()+s_mesh->getMaxZ())/2.0, i, j, k,
-                               x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
-                    }
-                }
-            }
-        }
-        cout << "\n" << "-----" << endl;
-    }
-    
-    // rescale to [0, 255]
-    for (int i = 0; i < NP; i++) {
-        intensities[i] = (intensities[i] + 1) / 2 * 255;
-    }
-    
-    const double MAX_INTENSITY = 255.0;
-    
-    // set threshold
-    if (Config::dim == 2) {
-        for (int j = 0; j < dimY; ++j) {
-            for (int i = 0; i < dimX; ++i) {
-                if (intensities[j*dimX + i] < 0.0) {
-                    intensities[j*dimX + i] = 0.0;
-                }
-                
-                if (intensities[j*dimX + i] > MAX_INTENSITY) {
-                    intensities[j*dimX + i] = MAX_INTENSITY;
-                }
-            }
-        }
-    } else {
-        for (int k = 0; k < dimZ; ++k) {
-            for (int j = 0; j < dimY; ++j) {
-                for (int i = 0; i < dimX; ++i) {
-                    if (intensities[k*dimX*dimY + j*dimX + i] < 0.0) {
-                        intensities[k*dimX*dimY + j*dimX + i] = 0.0;
-                    }
-                    
-                    if (intensities[k*dimX*dimY + j*dimX + i] > MAX_INTENSITY) {
-                        intensities[k*dimX*dimY + j*dimX + i] = MAX_INTENSITY;
-                    }
-                }
-            }
-        }
-    }
+
+    // coeff = ma.inverse() * u;
+    // cout << "\ncoeff = \n" << coeff << "\n" << "-----" << endl;
+    // cout << "\ncoeff.sum() = " << coeff.sum() << endl;
+
+    std::get<0>(m_result) = intensities;
+    rescaleResultData(0, 255);
+    double maxIntensity = 255.0;
+    thresholdResultData(maxIntensity);
     
     //    cout << "\nintensity after rescale = \n";
     //    for (int j = 0; j < dimY; j++) {
@@ -497,195 +415,17 @@ tuple<double*, double, int, int, int> ARBFInterpolator::interpolate() {
     //        cout << "\n";
     //    }
     //    cout << "\n" << "-----" << endl;
-    
-    return tuple<double*, double, int, int, int>(intensities, MAX_INTENSITY, dimX, dimY, dimZ);
-}
 
-void ARBFInterpolator::buildMatrix(int DIM, int NV, int NF, MatrixXd &ma, VectorXd &u) {
-    if (Config::dim == 2) { // 2D
-        for (int i = 0; i < DIM; i++) {
-            if (i < NV) {
-                u(i) = s_mesh->getVertices()[i].intensity;
-                double p0[] = { s_mesh->getVertices()[i].x, s_mesh->getVertices()[i].y, s_mesh->getVertices()[i].z };
-                
-                for (int j = 0; j < DIM; j++) {
-                    double p1[] = { -1, -1, -1 };
-                    double r = 0.0;
-                    
-                    if (j < NV) {
-                        p1[0] = s_mesh->getVertices()[j].x;
-                        p1[1] = s_mesh->getVertices()[j].y;
-                        p1[2] = s_mesh->getVertices()[j].z;
-                        r = s_computeDistance(p0, p1, Matrix3d::Identity());
-                    } else if (j < (NV + NF)) {
-                        p1[0] = getCenters()[j-NV].x;
-                        p1[1] = getCenters()[j-NV].y;
-                        p1[2] = getCenters()[j-NV].z;
-                        r = s_computeDistance(p0, p1, Matrix3d::Identity());
-                    } else {
-                        p1[0] = getEdgeCenters()[j-NV-NF].x;
-                        p1[1] = getEdgeCenters()[j-NV-NF].y;
-                        p1[2] = getEdgeCenters()[j-NV-NF].z;
-                        r = s_computeDistance(p0, p1, s_T[j-NV-NF]);
-                    }
-                    
-//                    r = s_computeDistance(p0, p1);
-                    ma(i, j) = s_phi(r);
-                }
-            } else if (i < (NV + NF)) {
-                u(i) = getCenters()[i-NV].intensity;
-                double p0[] = { getCenters()[i-NV].x, getCenters()[i-NV].y, getCenters()[i-NV].z };
-                
-                for (int j = 0; j < DIM; j++) {
-                    double p1[] = { -1, -1, -1 };
-                    double r = 0.0;
-                    
-                    if (j < NV) {
-                        p1[0] = s_mesh->getVertices()[j].x;
-                        p1[1] = s_mesh->getVertices()[j].y;
-                        p1[2] = s_mesh->getVertices()[j].z;
-                        r = s_computeDistance(p0, p1, Matrix3d::Identity());
-                    } else if (j < (NV + NF)) {
-                        p1[0] = getCenters()[j-NV].x;
-                        p1[1] = getCenters()[j-NV].y;
-                        p1[2] = getCenters()[j-NV].z;
-                        r = s_computeDistance(p0, p1, Matrix3d::Identity());
-                    } else {
-                        p1[0] = getEdgeCenters()[j-NV-NF].x;
-                        p1[1] = getEdgeCenters()[j-NV-NF].y;
-                        p1[2] = getEdgeCenters()[j-NV-NF].z;
-                        r = s_computeDistance(p0, p1, s_T[j-NV-NF]);
-                    }
-                    
-//                    r = s_computeDistance(p0, p1);
-                    ma(i, j) = s_phi(r);
-                }
-            } else {
-                u(i) = getEdgeCenters()[i-NV-NF].intensity;
-                double p0[] = { getEdgeCenters()[i-NV-NF].x, getEdgeCenters()[i-NV-NF].y, getEdgeCenters()[i-NV-NF].z };
-                
-                for (int j = 0; j < DIM; j++) {
-                    double p1[] = { -1, -1, -1 };
-                    double r = 0.0;
-                    
-                    if (j < NV) {
-                        p1[0] = s_mesh->getVertices()[j].x;
-                        p1[1] = s_mesh->getVertices()[j].y;
-                        p1[2] = s_mesh->getVertices()[j].z;
-                        r = s_computeDistance(p0, p1, Matrix3d::Identity());
-                    } else if (j < (NV + NF)) {
-                        p1[0] = getCenters()[j-NV].x;
-                        p1[1] = getCenters()[j-NV].y;
-                        p1[2] = getCenters()[j-NV].z;
-                        r = s_computeDistance(p0, p1, Matrix3d::Identity());
-                    } else {
-                        p1[0] = getEdgeCenters()[j-NV-NF].x;
-                        p1[1] = getEdgeCenters()[j-NV-NF].y;
-                        p1[2] = getEdgeCenters()[j-NV-NF].z;
-                        r = s_computeDistance(p0, p1, s_T[j-NV-NF]);
-                    }
-                    
-//                    r = s_computeDistance(p0, p1);
-                    ma(i, j) = s_phi(r);
-                }
-            }
-        }
-    }
-    // 3D
-    else {
-        // tetrahedron center
-        double centerX = (s_mesh->getMinX() + s_mesh->getMaxX()) / 2.0;
-        double centerY = (s_mesh->getMinY() + s_mesh->getMaxY()) / 2.0;
-        double centerZ = (s_mesh->getMinZ() + s_mesh->getMaxZ()) / 2.0;
-        
-        for (int i = 0; i < DIM; i++) {
-            if (i < NV) {
-                u(i) = s_mesh->getVertices()[i].intensity;
-                double p0[] = { s_mesh->getVertices()[i].x, s_mesh->getVertices()[i].y, s_mesh->getVertices()[i].z };
-                
-                for (int j = 0; j < DIM; j++) {
-                    double p1[] = { -1, -1, -1 };
-                    
-                    if (j < NV) {
-                        p1[0] = s_mesh->getVertices()[j].x;
-                        p1[1] = s_mesh->getVertices()[j].y;
-                        p1[2] = s_mesh->getVertices()[j].z;
-                    } else if (j < (NV + NF)) {
-                        p1[0] = getCenters()[j-NV].x;
-                        p1[1] = getCenters()[j-NV].y;
-                        p1[2] = getCenters()[j-NV].z;
-                    } else {
-                        p1[0] = centerX;
-                        p1[1] = centerY;
-                        p1[2] = centerZ;
-                    }
-                    
-                    double r = s_computeDistance(p0, p1, Matrix3d::Identity());
-                    ma(i, j) = s_phi(r);
-                }
-            } else if (i < (NV + NF)) {
-                u(i) = getCenters()[i-NV].intensity;
-                double p0[] = { getCenters()[i-NV].x, getCenters()[i-NV].y, getCenters()[i-NV].z };
-                
-                for (int j = 0; j < DIM; j++) {
-                    double p1[] = { -1, -1, -1 };
-                    
-                    if (j < NV) {
-                        p1[0] = s_mesh->getVertices()[j].x;
-                        p1[1] = s_mesh->getVertices()[j].y;
-                        p1[2] = s_mesh->getVertices()[j].z;
-                    } else if (j < (NV + NF)) {
-                        p1[0] = getCenters()[j-NV].x;
-                        p1[1] = getCenters()[j-NV].y;
-                        p1[2] = getCenters()[j-NV].z;
-                    } else {
-                        p1[0] = centerX;
-                        p1[1] = centerY;
-                        p1[2] = centerZ;
-                    }
-                    
-                    double r = s_computeDistance(p0, p1, Matrix3d::Identity());
-                    ma(i, j) = s_phi(r);
-                }
-            } else {
-                u(i) = -1;
-                double p0[] = { centerX, centerY, centerZ };
-                
-                for (int j = 0; j < DIM; j++) {
-                    double p1[] = { -1, -1, -1 };
-                    
-                    if (j < NV) {
-                        p1[0] = s_mesh->getVertices()[j].x;
-                        p1[1] = s_mesh->getVertices()[j].y;
-                        p1[2] = s_mesh->getVertices()[j].z;
-                    } else if (j < (NV + NF)) {
-                        p1[0] = getCenters()[j-NV].x;
-                        p1[1] = getCenters()[j-NV].y;
-                        p1[2] = getCenters()[j-NV].z;
-                    } else {
-                        p1[0] = centerX;
-                        p1[1] = centerY;
-                        p1[2] = centerZ;
-                    }
-                    
-                    double r = s_computeDistance(p0, p1, Matrix3d::Identity());
-                    ma(i, j) = s_phi(r);
-                }
-            }
-        }
-    }
-}
-
-// MARK: Utility Functions
-void ARBFInterpolator::setBasisType(const BasisType type) {
-    s_basis = type;
+    std::get<1>(m_result) = maxIntensity;
+    std::get<2>(m_result) = { dimX, dimY, dimZ };
+//    return std::make_tuple(intensities, maxIntensity, { dimX, dimY, dimZ });
 }
 
 double ARBFInterpolator::computePSNR(const PPMImage &img1, const PPMImage &img2) {
-    return 20.0 * log10(255.0 / s_computeRMSE(img1, img2));
+    return 20.0 * log10(255.0 / m_computeRMSE(img1, img2));
 }
 
-inline double ARBFInterpolator::s_computeRMSE(const PPMImage &img1, const PPMImage &img2) {
+inline double ARBFInterpolator::m_computeRMSE(const PPMImage &img1, const PPMImage &img2) {
     double sum = 0.0;
     assert(img1.getX() == img2.getX() && img1.getY() == img2.getY());
     
@@ -699,453 +439,337 @@ inline double ARBFInterpolator::s_computeRMSE(const PPMImage &img1, const PPMIma
     return sqrt(sum / (img1.getX() * img1.getY()));
 }
 
-inline vector<double> ARBFInterpolator::linspace(double a, double b, int n) {
+//std::tuple<double, double, std::vector<double>, std::vector<double>> ARBFInterpolator::m_computeEigen(const Eigen::Matrix2d &m) {
+ARBFInterpolator::Eigens2d ARBFInterpolator::computeEigens(const Eigen::Matrix2d &matrix) {
+    assert(std::abs(matrix(0,1) - matrix(1,0)) < Config::epsilon); // matrix should be symmetric
+
+    // compute eigenvalues
+    // matrix looks like
+    //      | a    c|
+    // A =  |       |
+    //      | c    b|
+
+    double a = matrix(0,0), b = matrix(1,1), c = matrix(0,1);
+
+    // compute eigenvalues
+    double lambda1 = 0.5 * (a + b) + std::sqrt(SQ(c) + 0.25 * SQ(a - b));
+    double lambda2 = 0.5 * (a + b) - std::sqrt(SQ(c) + 0.25 * SQ(a - b));
+    Eigenvalues2d eigenvalues = { lambda1, lambda2 };
+
+    // compute eigenvectors
+    double v1[2], v2[2];
+    double u1 = 0.0, w1 = 0.0;
+
+    if (std::abs(lambda1 - a) > Config::epsilon) {
+        // lambda1 != a
+        u1 = c;
+        w1 = lambda1 - a;
+    } else if (std::abs(lambda1 - b) > Config::epsilon) {
+        // lambda1 != b
+        u1 = lambda1 - b;
+        w1 = c;
+    } else {
+        v1[0] = 1.0;
+        v1[1] = 0.0;
+        v2[0] = v1[1];
+        v2[1] = -v1[0];
+    }
+
+    double p = std::sqrt(SQ(u1) + SQ(w1));
+    v1[0] = u1 / p;
+    v1[1] = w1 / p;
+    v2[0] = v1[1];
+    v2[1] = -v1[0];
+    std::array<double, 2> vec1 = { v1[0], v1[1] };
+    std::array<double, 2> vec2 = { v2[0], v2[1] };
+    Eigenvectors2d eigenvectors = { vec1, vec2 };
+
+    return std::make_tuple(eigenvalues, eigenvectors);
+}
+
+ARBFInterpolator::Eigens3d ARBFInterpolator::computeEigens(const Eigen::Matrix3d &matrix) {
+    Eigen::EigenSolver<Eigen::Matrix3d> solver(matrix);
+    auto values = solver.eigenvalues();
+
+    // make sure all eigenvalues are real
+    assert(values[0].imag() < std::abs(Config::epsilon) &&
+           values[1].imag() < std::abs(Config::epsilon) &&
+           values[2].imag() < std::abs(Config::epsilon));
+    Eigenvalues3d eigenvalues = { values(0).real(), values(1).real(), values(2).real() };
+    auto vectors = solver.eigenvectors();
+    std::array<double, 3> vec1 = { vectors(0, 0).real(), vectors(0, 1).real(), vectors(0, 2).real() };
+    std::array<double, 3> vec2 = { vectors(1, 0).real(), vectors(1, 1).real(), vectors(1, 2).real() };
+    std::array<double, 3> vec3 = { vectors(2, 0).real(), vectors(2, 1).real(), vectors(2, 2).real() };
+    Eigenvectors3d eigenvectors = { vec1, vec2, vec3 };
+    return std::make_tuple(eigenvalues, eigenvectors);
+}
+
+void ARBFInterpolator::rescaleEigenvalues(Eigenvalues2d &values) {
+    double mu1 = values[0], mu2 = values[1];
+    double sumMu = mu1 + mu2;
+    double c = 1.0;
+
+    if (sumMu > Config::epsilon || sumMu < -Config::epsilon) {
+        c = std::abs(mu1 - mu2) / sumMu;
+    }
+
+    if (c > Config::epsilon || c < -Config::epsilon) {
+        values[1] = 1.0 - std::exp(-3.8 * SQ(Config::c0 / c));
+    } else {
+        values[1] = 1.0;
+    }
+
+    values[0] = 1.0;
+}
+
+void ARBFInterpolator::rescaleEigenvalues(Eigenvalues3d &values) {
+    double mu1 = values[0], mu2 = values[1], mu3 = values[2];
+    double sum1 = mu1 + mu2;
+    double sum2 = mu1 + mu3;
+    double c1 = 1.0, c2 = 1.0;
+
+    if (sum1 > Config::epsilon || sum1 < -Config::epsilon) {
+        c1 = std::abs(mu1 - mu2) / sum1;
+    }
+
+    if (sum2 > Config::epsilon || sum2 < -Config::epsilon) {
+        c2 = std::abs(mu1 - mu3) / sum2;
+    }
+
+    if (c1 > Config::epsilon || c1 < -Config::epsilon) {
+        values[1] = 1.0 - exp(-3.8 * SQ(Config::c0 / c1));
+        values[2] = 1.0 - exp(-3.8 * SQ(Config::c0 / c2));
+    } else {
+        values[1] = 1.0;
+        values[2] = 1.0;
+    }
+
+    values[0] = 1.0;
+}
+
+bool ARBFInterpolator::m_isInTriangle(const double* x, int triangleId) {
+    const Vertex &a = m_mesh->getVertices()[m_mesh->getFaces()[triangleId].a];
+    const Vertex &b = m_mesh->getVertices()[m_mesh->getFaces()[triangleId].b];
+    const Vertex &c = m_mesh->getVertices()[m_mesh->getFaces()[triangleId].c];
+
+    Eigen::Vector2d ab(b.x - a.x, b.y - a.y);
+    Eigen::Vector2d bc(c.x - b.x, c.y - b.y);
+    Eigen::Vector2d ca(a.x - c.x, a.y - c.y);
+    Eigen::Vector2d ax(x[0] - a.x, x[1] - a.y);
+    Eigen::Vector2d bx(x[0] - b.x, x[1] - b.y);
+    Eigen::Vector2d cx(x[0] - c.x, x[1] - c.y);
+
+    double area = 0, area1 = 0, area2 = 0, area3 = 0;
+    double cosTheta = ab.dot(-ca) / (ab.norm() * ca.norm());
+    area = 0.5 * ab.norm() * ca.norm() * sqrt(1.0 - SQ(cosTheta));
+    double cosTheta1 = ab.dot(ax) / (ab.norm() * ax.norm());
+    area1 = 0.5 * ab.norm() * ax.norm() * sqrt(1.0 - SQ(cosTheta1));
+    double cosTheta2 = cx.dot(ca) / (cx.norm() * ca.norm());
+    area2 = 0.5 * cx.norm() * ca.norm() * sqrt(1.0 - SQ(cosTheta2));
+    double cosTheta3 = bx.dot(bc) / (bx.norm() * bc.norm());
+    area3 = 0.5 * bx.norm() * bc.norm() * sqrt(1.0 - SQ(cosTheta3));
+
+    if (std::isnan(area)) area = 0.0;
+    if (std::isnan(area1)) area1 = 0.0;
+    if (std::isnan(area2)) area2 = 0.0;
+    if (std::isnan(area3)) area3 = 0.0;
+
+    return (std::abs(area1+area2+area3-area) < Config::epsilon);
+}
+
+double ARBFInterpolator::m_computeDistance(const double *v0, const double *v1) {
+    return std::sqrt(SQ(v1[0]-v0[0]) + SQ(v1[1]-v0[1]) + SQ(v1[2]-v0[2]));
+}
+
+double ARBFInterpolator::m_computeDistance(const double *v0, const double *v1, const Eigen::Matrix3d & T) {
+    Eigen::RowVector3d dis(v1[0]-v0[0], v1[1]-v0[1], v1[2]-v0[2]);
+    Eigen::RowVector3d tmp = dis * T;
+
+    // use definition: distance_T = dis * T * dis
+    return tmp(0)*dis(0) + tmp(1)*dis(1) + tmp(2)*dis(2);
+}
+
+std::vector<double> ARBFInterpolator::linspace(double a, double b, int n) {
     assert(b > a && n > 0);
-    vector<double> res;
+    std::vector<double> res;
     double step = (b-a) / (n-1);
-    
+
     while (a < b) {
         res.push_back(a);
         a += step;
     }
-    
+
     // get last point
-    if ((a-b) < Config::EPSILON) {
+    if ((a-b) < Config::epsilon) {
         res.push_back(b);
     }
-    
+
     return res;
 }
 
-void ARBFInterpolator::clean() {
-    delete [] s_edgeCenters;
-    s_edgeCenters = nullptr;
-    
-    delete [] s_centers;
-    s_centers = nullptr;
-}
+void ARBFInterpolator::solveDistanceMatrix2d() {
+    unsigned nv = m_mesh->getNumVertices();
+    unsigned nf = m_mesh->getNumFaces();
+    unsigned ne = m_mesh->getNumEdges();
+    unsigned matrixDimension = nv + nf + ne;
 
-// MARK: Find Neighboring Triangles and Vertices
-void ARBFInterpolator::findNeighVertices1Ring() {
-    s_vv_1ring.resize(s_mesh->getNumVertices());
-    s_vf_1ring.resize(s_mesh->getNumVertices());
-    
-    // build 1-ring VERTEX <-> FACE mapping
-    for (int f = 0; f < s_mesh->getNumFaces(); ++f) {
-        s_vf_1ring[s_mesh->getFaces()[f].a].push_back(f);
-        s_vf_1ring[s_mesh->getFaces()[f].b].push_back(f);
-        s_vf_1ring[s_mesh->getFaces()[f].c].push_back(f);
-    }
-    
-    // find 1-ring VERTEX <-> VERTEX mapping
-    for (int v = 0; v < s_mesh->getNumVertices(); ++v) {
-        for (size_t j = 0; j < s_vf_1ring[v].size(); ++j) {
-            s_vv_1ring[v].insert(s_mesh->getFaces()[s_vf_1ring[v][j]].a);
-            s_vv_1ring[v].insert(s_mesh->getFaces()[s_vf_1ring[v][j]].b);
-            s_vv_1ring[v].insert(s_mesh->getFaces()[s_vf_1ring[v][j]].c);
-        }
-    }
-    
-    if (Config::isPrintingDebugInfo) {
-        string filename = string("DEBUG.vf_1ring.txt");
-        FILE *fp = nullptr;
-        
-        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
-            fprintf(stderr, "WARNING: open DEBUG.vf_1ring.txt failed ...\n");
-            return;
-        }
-        
-        for (int i = 0; i < s_vf_1ring.size(); ++i) {
-            fprintf(fp, "[v <-> f] [%ld] v%d: ", s_vf_1ring[i].size(), i);
-            for (int j = 0; j < s_vf_1ring[i].size(); ++j) {
-                fprintf(fp, "%d ", s_vf_1ring[i][j]);
-            }
-            fprintf(fp, "\n");
-        }
-        
-        fclose(fp);
-        fp = nullptr;
-        filename = string("DEBUG.vv_1ring.txt");
-        
-        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
-            fprintf(stderr, "WARNING: open DEBUG.vv_1ring.txt failed ...\n");
-            return;
-        }
-        
-        for (int i = 0; i < s_vv_1ring.size(); ++i) {
-            fprintf(fp, "[v <-> v] [%ld] v%d: ", s_vv_1ring[i].size(), i);
-            for (set<int>::const_iterator it = s_vv_1ring[i].begin();
-                 it != s_vv_1ring[i].end(); ++it) {
-                fprintf(fp, "%d ", *it);
-            }
-            fprintf(fp, "\n");
-        }
-        
-        fclose(fp);
-    }
-}
+    m_distanceMatrix.resize(matrixDimension, matrixDimension);
+    m_u.resize(matrixDimension);
+    const Vertex *vi = nullptr, *vj = nullptr;
+    Eigen::Matrix3d tensor;
 
-void ARBFInterpolator::findNeighFaces1Ring() {
-    s_ff_1ring.resize(s_mesh->getNumFaces());
-    
-    for (int f = 0; f < s_mesh->getNumFaces(); ++f) {
-        int a = s_mesh->getFaces()[f].a;
-        int b = s_mesh->getFaces()[f].b;
-        int c = s_mesh->getFaces()[f].c;
-        
-        for (size_t j = 0; j < s_vf_1ring[a].size(); ++j) {
-            s_ff_1ring[f].insert(s_vf_1ring[a][j]);
-        }
-        
-        for (size_t j = 0; j < s_vf_1ring[b].size(); ++j) {
-            s_ff_1ring[f].insert(s_vf_1ring[b][j]);
-        }
-        
-        for (size_t j = 0; j < s_vf_1ring[c].size(); ++j) {
-            s_ff_1ring[f].insert(s_vf_1ring[c][j]);
-        }
-    }
-    
-    if (Config::isPrintingDebugInfo) {
-        string filename = string("DEBUG.ff_1ring.txt");
-        FILE *fp = nullptr;
-        
-        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
-            fprintf(stderr, "WARNING: open DEBUG.ff_1ring.txt failed ...\n");
-            return;
-        }
-        
-        for (int f = 0; f < s_ff_1ring.size(); ++f) {
-            fprintf(fp, "[f <-> f] [%ld] f%d: ", s_ff_1ring[f].size(), f);
-            for (set<int>::const_iterator it = s_ff_1ring[f].begin();
-                 it != s_ff_1ring[f].end(); ++it) {
-                fprintf(fp, "%d ", *it);
-            }
-            fprintf(fp, "\n");
-        }
-        
-        fclose(fp);
-    }
-}
-
-void ARBFInterpolator::findNeighVertices2Ring() {
-    s_vv_2ring.resize(s_mesh->getNumVertices());
-    s_vf_2ring.resize(s_mesh->getNumVertices());
-    
-    // build 2-ring VERTEX <-> FACE mapping
-    s_vf_2ring.assign(s_vf_1ring.begin(), s_vf_1ring.end());
-    for (int i = 0; i < s_mesh->getNumFaces(); ++i) {
-        // 3 vertices of current face
-        int a = s_mesh->getFaces()[i].a;
-        int b = s_mesh->getFaces()[i].b;
-        int c = s_mesh->getFaces()[i].c;
-        
-        // neighboring vertices of 3 vertices
-        const std::set<int> &neib1 = s_vv_1ring[a];
-        const std::set<int> &neib2 = s_vv_1ring[b];
-        const std::set<int> &neib3 = s_vv_1ring[c];
-        
-        // go over each neighboring vertices set, check if current face is in
-        // the neighboring faces list
-        std::set<int>::const_iterator it;
-        
-        for (it = neib1.begin(); it != neib1.end(); ++it) {
-            std::vector<int> &neib_faces = s_vf_1ring[*it];
-            if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
-                // current face is not in the list, add it
-                s_vf_2ring[*it].push_back(i);
-            }
-        }
-        
-        for (it = neib2.begin(); it != neib2.end(); ++it) {
-            std::vector<int> &neib_faces = s_vf_1ring[*it];
-            if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
-                // current face is not in the list, add it
-                s_vf_2ring[*it].push_back(i);
-            }
-        }
-        
-        for (it = neib3.begin(); it != neib3.end(); ++it) {
-            std::vector<int> &neib_faces = s_vf_1ring[*it];
-            if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
-                // current face is not in the list, add it
-                s_vf_2ring[*it].push_back(i);
-            }
-        }
-    }
-    
-    // find 2-ring neighboring vertices
-    s_vv_2ring.assign(s_vv_1ring.begin(), s_vv_1ring.end());
-    for (int i = 0; i < s_mesh->getNumVertices(); ++i) {
-        for (int j = 0; j < s_vf_2ring[i].size(); ++j) {
-            s_vv_2ring[i].insert(s_mesh->getFaces()[s_vf_2ring[i][j]].a);
-            s_vv_2ring[i].insert(s_mesh->getFaces()[s_vf_2ring[i][j]].b);
-            s_vv_2ring[i].insert(s_mesh->getFaces()[s_vf_2ring[i][j]].c);
-        }
-    }
-    
-    if (Config::isPrintingDebugInfo) {
-        string filename = "DEBUG.vf_2ring.txt";
-        FILE *fp = nullptr;
-        
-        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
-            fprintf(stderr, "WARNING: open DEBUG.vf_2ring.txt failed.\n");
-            return;
-        }
-        
-        for (int i = 0; i < s_vf_2ring.size(); ++i) {
-            fprintf(fp, "[v <-> f] [%ld] v%d: ", s_vf_2ring[i].size(), i);
-            for (int j = 0; j < s_vf_2ring[i].size(); ++j) {
-                fprintf(fp, "%d ", s_vf_2ring[i][j]);
-            }
-            fprintf(fp, "\n");
-        }
-        
-        fclose(fp);
-        fp = nullptr;
-        filename = "DEBUG.vv_2ring.txt";
-        
-        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
-            fprintf(stderr, "WARNING: open DEBUG.vv_2ring.txt failed ...");
-            return;
-        }
-        
-        for (int i = 0; i < s_vv_2ring.size(); ++i) {
-            fprintf(fp, "[v <-> v] [%ld] v%d: ", s_vv_2ring[i].size(), i);
-            for (set<int>::const_iterator it = s_vv_2ring[i].begin();
-                 it != s_vv_2ring[i].end(); ++it) {
-                fprintf(fp, "%d ", *it);
-            }
-            fprintf(fp, "\n");
-        }
-        
-        fclose(fp);
-    }
-}
-
-void ARBFInterpolator::findNeighFaces2Ring() {
-    s_ff_2ring.resize(s_mesh->getNumFaces());
-    
-    for (int f = 0; f < s_mesh->getNumFaces(); ++f) {
-        int a = s_mesh->getFaces()[f].a;
-        int b = s_mesh->getFaces()[f].b;
-        int c = s_mesh->getFaces()[f].c;
-        
-        for (int j = 0; j < s_vf_2ring[a].size(); ++j) {
-            s_ff_2ring[f].insert(s_vf_2ring[a][j]);
-        }
-        
-        for (int j = 0; j < s_vf_2ring[b].size(); ++j) {
-            s_ff_2ring[f].insert(s_vf_2ring[b][j]);
-        }
-        
-        for (int j = 0; j < s_vf_2ring[c].size(); ++j) {
-            s_ff_2ring[f].insert(s_vf_2ring[c][j]);
-        }
-    }
-    
-    if (Config::isPrintingDebugInfo) {
-        string filename = "DEBUG.ff_2ring.txt";
-        FILE *fp = nullptr;
-        
-        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
-            fprintf(stderr, "WARNINIG: open DEBUG.ff_2ring.txt failed ...");
-            return;
-        }
-        
-        for (int f = 0; f < s_ff_2ring.size(); ++f) {
-            fprintf(fp, "[f <-> f] [%ld] f%d: ", s_ff_2ring[f].size(), f);
-            for (set<int>::const_iterator it = s_ff_2ring[f].begin();
-                 it != s_ff_2ring[f].end(); ++it) {
-                fprintf(fp, "%d ", *it);
-            }
-            fprintf(fp, "\n");
-        }
-        
-        fclose(fp);
-    }
-}
-
-// MARK: Calculate Triangle Centers and Edge Centers
-void ARBFInterpolator::calculateEdgeCenters() {
-    s_edgeCenters = new Vertex[s_mesh->getNumEdges()];
-    
-    if (s_edgeCenters == nullptr) {
-        fprintf(stderr, "ERROR: allocate memory for triangle edge centers failed.\n");
-        exit(EXIT_FAILURE);
-    }
-    
-    // function to compute C, used to transform eigenvalues
-    auto computeC = [](double mu1, double mu2, double mu3) -> tuple<double, double> {
-        double sum1 = mu1 + mu2;
-        double sum2 = mu1 + mu3;
-        double res1 = 1.0, res2 = 1.0;
-        
-        if (sum1 > Config::EPSILON || sum1 < -Config::EPSILON) {
-            res1 = abs(mu1 - mu2) / sum1;
-        }
-        
-        if (sum2 > Config::EPSILON || sum2 < -Config::EPSILON) {
-            res2 = abs(mu1 - mu3) / sum2;
-        }
-        
-        return make_tuple(res1, res2);
-    };
-    
-    int e = 0;
-    for (unordered_set<Edge, edgeComparator>::const_iterator it = s_mesh->getEdges().begin(); it != s_mesh->getEdges().end(); it++, e++) {
-        int a = it->a;
-        int b = it->b;
-        s_edgeCenters[e].x = s_mesh->getVertices()[a].x + 0.5 * (s_mesh->getVertices()[b].x - s_mesh->getVertices()[a].x);
-        s_edgeCenters[e].y = s_mesh->getVertices()[a].y + 0.5 * (s_mesh->getVertices()[b].y - s_mesh->getVertices()[a].y);
-        s_edgeCenters[e].z = s_mesh->getVertices()[a].z + 0.5 * (s_mesh->getVertices()[b].z - s_mesh->getVertices()[a].z);
-        s_edgeCenters[e].intensity = it->intensity;
-        
-//        // only calculate eigenvalues and eigenvectors for edges of 1st triangle
-//        double dx = s_centers[0].x - s_edgeCenters[e].x;
-//        double dy = s_centers[0].y - s_edgeCenters[e].y;
-        double dx = s_mesh->getVertices()[b].x - s_mesh->getVertices()[a].x;
-        double dy = s_mesh->getVertices()[b].y - s_mesh->getVertices()[a].y;
-        double dz = s_mesh->getVertices()[b].z - s_mesh->getVertices()[a].z;
-        double normDxy = sqrt(SQ(dx) + SQ(dy) + SQ(dz));
-        double gradX = dx / normDxy;
-        double gradY = dy / normDxy;
-        double gradZ = dz / normDxy;
-        Matrix3d mEdge;
-//        Matrix2d mEdge;
-        mEdge(0, 0) = gradX * gradX;
-        mEdge(0, 1) = gradX * gradY;
-        mEdge(0, 2) = gradX * gradZ;
-        mEdge(1, 0) = gradY * gradX;
-        mEdge(1, 1) = gradY * gradY;
-        mEdge(1, 2) = gradY * gradZ;
-        mEdge(2, 0) = gradZ * gradX;
-        mEdge(2, 1) = gradZ * gradY;
-        mEdge(2, 2) = gradZ * gradZ;
-        
-        // compute eigenvalues and eigenvectors
-        EigenSolver<Matrix3d> solver(mEdge);
-//        auto result = s_computeEigen(mEdge); // returns tuple<double, double, vector<double>, vector<double>>
-        auto result = solver.eigenvalues();
-        
-        // make sure there are no complext eigenvalues
-        assert(result[0].imag() < abs(Config::EPSILON) &&
-               result[1].imag() < abs(Config::EPSILON) &&
-               result[2].imag() < abs(Config::EPSILON));
-        
-        double eig2 = 0.0, eig3 = 0.0;
-        auto c = computeC(result[0].real(), result[1].real(), result[2].real());
-        
-        if ((get<0>(c) > Config::EPSILON || get<0>(c) < -Config::EPSILON) &&
-            (get<1>(c) > Config::EPSILON || get<1>(c) < -Config::EPSILON)) {
-            eig2 = 1.0 - exp(-3.8 * SQ(Config::C0 / get<0>(c)));
-            eig3 = 1.0 - exp(-3.8 * SQ(Config::C0 / get<1>(c)));
+    for (unsigned i = 0; i < matrixDimension; i++) {
+        if (i < nv) {
+            vi = &m_mesh->getVertices()[i];
+        } else if (i < (nv + nf)) {
+            vi = &getTriangleCenters()[i - nv];
         } else {
-            eig2 = 1.0;
-            eig3 = 1.0;
+            vi = &getEdgeCenters()[i - nv - nf];
         }
-        
-        s_edgeCenters[e].eig1 = 1.0;
-        s_edgeCenters[e].eig2 = eig2;
-        s_edgeCenters[e].eig3 = eig3;
-        s_edgeCenters[e].eigVec1 = vector<double>({
-            solver.eigenvectors()(0, 0).real(),
-            solver.eigenvectors()(0, 1).real(),
-            solver.eigenvectors()(0, 2).real()
-        });
-        s_edgeCenters[e].eigVec2 = vector<double>({
-            solver.eigenvectors()(1, 0).real(),
-            solver.eigenvectors()(1, 1).real(),
-            solver.eigenvectors()(1, 2).real()
-        });
-        s_edgeCenters[e].eigVec3 = vector<double>({
-            solver.eigenvectors()(2, 0).real(),
-            solver.eigenvectors()(2, 1).real(),
-            solver.eigenvectors()(2, 2).real()
-        });
+
+        m_u(i) = vi->intensity;
+        double p0[] = { vi->x, vi->y, vi->z };
+
+        for (int j = 0; j < matrixDimension; j++) {
+            if (j < nv) {
+                vj = &m_mesh->getVertices()[j];
+                tensor = Eigen::Matrix3d::Identity();
+            } else if (j < (nv + nf)) {
+                vj = &getTriangleCenters()[j - nv];
+                tensor = Eigen::Matrix3d::Identity();
+            } else {
+                vj = &getEdgeCenters()[j - nv - nf];
+                tensor = m_T[j-nv-nf];
+            }
+
+            double p1[] = { vj->x, vj->y, vj->z };
+            double r = m_computeDistance(p0, p1, tensor);
+            m_distanceMatrix(i, j) = m_basis->phi(r);
+        };
     }
-    
-    //    PPMImage im(301, 301);
-    //    im.setMaxIntensity(255);
-    //    im.setPath("/Users/keliu/Documents/projects/arbf/arbf-test/arbf-test/edge.ppm");
-    //    double* data = new double[301*301];
-    //    memset(data, 0, sizeof(double) * 301 * 301);
-    //    for (int j = 0; j < 301; j++) {
-    //        for (int i = 0; i < 301; i++) {
-    //            for (int e = 0;  e < s_mesh->getNumEdges(); e++) {
-    //                if (s_edgeCenters[e].x * 100 == i && s_edgeCenters[e].y * 100 == j) {
-    //                    data[j*301+i] = 255;
-    //                }
-    //            }
-    //        }
-    //    }
-    //    im.setImageData(data);
-    //    im.write();
-    
-    if (Config::isPrintingDebugInfo) {
-        string filename = "DEBUG.edge_centers.txt";
-        FILE *fp = nullptr;
-        
-        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
-            fprintf(stderr, "WARNING: open DEBUG.edge_centers.txt failed.\n");
-            return;
-        }
-        
-        fprintf(fp, "X Y INTENSITY\n");
-        
-        for (int e = 0; e < s_mesh->getNumEdges(); ++e) {
-            fprintf(fp, "%lf %lf %lf %lf\n", s_edgeCenters[e].x, s_edgeCenters[e].y, s_edgeCenters[e].z, s_edgeCenters[e].intensity);
-        }
-        
-        fclose(fp);
-    }
+
+    m_coeff = m_distanceMatrix.fullPivLu().solve(m_u); // call Eigen library to solve
+    m_hasCoeffSolved = true;
 }
 
-void ARBFInterpolator::calculateCenters() {
-    s_centers = new Vertex[s_mesh->getNumFaces()];
-    
-    if (s_centers == nullptr) {
-        fprintf(stderr, "ERROR: allocate memory for triangle centers failed.\n");
-        exit(EXIT_FAILURE);
-    }
-    
-    for (int f = 0; f < s_mesh->getNumFaces(); ++f) {
-        int a = s_mesh->getFaces()[f].a;
-        int b = s_mesh->getFaces()[f].b;
-        int c = s_mesh->getFaces()[f].c;
-        
-        // compute coordinates
-        s_centers[f].x = (s_mesh->getVertices()[a].x + s_mesh->getVertices()[b].x + s_mesh->getVertices()[c].x) / 3.0;
-        s_centers[f].y = (s_mesh->getVertices()[a].y + s_mesh->getVertices()[b].y + s_mesh->getVertices()[c].y) / 3.0;
-        s_centers[f].z = (s_mesh->getVertices()[a].z + s_mesh->getVertices()[b].z + s_mesh->getVertices()[c].z) / 3.0;
-        
-        // compute intensity
-        s_centers[f].intensity = s_mesh->getFaces()[f].intensity;
-        
-        // assign eigenvalues and eigenvectors
-        s_centers[f].eig1 = 0;
-        s_centers[f].eig2 = 0;
-        s_centers[f].eig3 = 0;
-        s_centers[f].eigVec1 = {1, 0, 0};
-        s_centers[f].eigVec2 = {0, 1, 0};
-        s_centers[f].eigVec3 = {0, 0, 1};
-    }
-    
-    if (Config::isPrintingDebugInfo) {
-        string filename = "DEBUG.centers.txt";
-        FILE *fp = nullptr;
-        
-        if ((fp = fopen(filename.c_str(), "w")) == nullptr) {
-            fprintf(stderr, "WARNING: open DEBUG.centers.txt failed.\n");
-            return;
+void ARBFInterpolator::solveDistanceMatrix3d() {
+    unsigned nv = m_mesh->getNumVertices();
+    unsigned nf = m_mesh->getNumFaces();
+
+    unsigned matrixDimension = nv + nf + 1; // 1 means tetrahedron center
+
+    m_distanceMatrix.resize(matrixDimension, matrixDimension);
+    m_u.resize(matrixDimension);
+    const Vertex *vi = nullptr, *vj = nullptr;
+    Eigen::Matrix3d tensor = Eigen::Matrix3d::Identity(); // use RBF for 3D
+
+    // tetrahedron center
+    double centerX = (m_mesh->getMinX() + m_mesh->getMaxX()) / 2.0;
+    double centerY = (m_mesh->getMinY() + m_mesh->getMaxY()) / 2.0;
+    double centerZ = (m_mesh->getMinZ() + m_mesh->getMaxZ()) / 2.0;
+
+    for (int i = 0; i < matrixDimension; i++) {
+        double p0[] = { centerX, centerY, centerZ };
+        m_u(i) = -1;
+
+        if (i < nv) {
+            vi = &m_mesh->getVertices()[i];
+            p0[0] = vi->x;
+            p0[1] = vi->y;
+            p0[2] = vi->z;
+            m_u(i) = vi->intensity;
+        } else if (i < (nv + nf)) {
+            vi = &getTriangleCenters()[i - nv];
+            p0[0] = vi->x;
+            p0[1] = vi->y;
+            p0[2] = vi->z;
+            m_u(i) = vi->intensity;
         }
-        
-        fprintf(fp, "X Y Z INTENSITY\n");
-        
-        for (int f = 0; f < s_mesh->getNumFaces(); ++f) {
-            fprintf(fp, "%lf %lf %lf %lf\n", s_centers[f].x, s_centers[f].y, s_centers[f].z, s_centers[f].intensity);
+
+        for (int j = 0; j < matrixDimension; j++) {
+            double p1[] = { centerX, centerY, centerZ };
+
+            if (j < nv) {
+                vj = &m_mesh->getVertices()[j];
+                p1[0] = vj->x;
+                p1[1] = vj->y;
+                p1[2] = vj->z;
+            } else if (j < (nv + nf)) {
+                vj = &getTriangleCenters()[j - nv];
+                p1[0] = vj->x;
+                p1[1] = vj->y;
+                p1[2] = vj->z;
+            }
+
+            double r = m_computeDistance(p0, p1, tensor);
+            m_distanceMatrix(i, j) = m_basis->phi(r);
         }
-        
-        fclose(fp);
     }
+
+    m_coeff = m_distanceMatrix.fullPivLu().solve(m_u); // call Eigen library to solve
+    m_hasCoeffSolved = true;
+}
+
+void ARBFInterpolator::rescaleResultData(int low, int high) {
+    assert((high - low) > Config::epsilon);
+
+    // original data is in range [-1.0, 1.0]
+    for (double &intensity: std::get<0>(m_result)) {
+        intensity = (intensity - (-1)) / (1.0 - (-1.0)) * (high - low);
+    }
+
+//    for (int i = 0; i < NP; i++) {
+//        intensities[i] = (intensities[i] + 1) / 2 * 255;
+//    }
+}
+
+void ARBFInterpolator::thresholdResultData(double maxIntensity) {
+    assert(maxIntensity > Config::epsilon);
+
+    for (unsigned i = 0; i < std::get<0>(m_result).size(); i++) {
+        if (std::get<0>(m_result)[i] < 0.0) {
+            std::get<0>(m_result)[i] = 0.0;
+        }
+
+        if (std::get<0>(m_result)[i] > maxIntensity) {
+            std::get<0>(m_result)[i] = maxIntensity;
+        }
+    }
+
+//    for (auto &intensity: std::get<0>(m_result)) {
+//        if (intensity < 0.0) {
+//            intensity = 0.0;
+//        }
+//
+//        if (intensity > maxIntensity) {
+//            intensity = maxIntensity;
+//        }
+//    }
+
+//        for (int j = 0; j < dimY; ++j) {
+//            for (int i = 0; i < dimX; ++i) {
+//                if (intensities[j*dimX + i] < 0.0) {
+//                    intensities[j*dimX + i] = 0.0;
+//                }
+//
+//                if (intensities[j*dimX + i] > MAX_INTENSITY) {
+//                    intensities[j*dimX + i] = MAX_INTENSITY;
+//                }
+//            }
+//        }
+//    } else {
+//        for (int k = 0; k < dimZ; ++k) {
+//            for (int j = 0; j < dimY; ++j) {
+//                for (int i = 0; i < dimX; ++i) {
+//                    if (intensities[k*dimX*dimY + j*dimX + i] < 0.0) {
+//                        intensities[k*dimX*dimY + j*dimX + i] = 0.0;
+//                    }
+//
+//                    if (intensities[k*dimX*dimY + j*dimX + i] > MAX_INTENSITY) {
+//                        intensities[k*dimX*dimY + j*dimX + i] = MAX_INTENSITY;
+//                    }
+//                }
+//            }
+//        }
+//    }
 }

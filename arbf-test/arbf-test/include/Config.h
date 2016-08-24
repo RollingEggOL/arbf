@@ -25,12 +25,14 @@
 class Config
 {
 public:
-    static const double EPSILON;
-    static const double C0; // C0 parameter in paper
-    static bool isUsing2Ring; // if use 2-ring neighborhood
-    static bool isUsingISORBF; // if use ISO-RBF for eigenvalues
-    static bool isPrintingDebugInfo; // if printing out debug info
-    static int dim; // model dimension
+    static int neighborhoodSize;
+//    static bool isUsingISORBF; // if use ISO-RBF for eigenvalues
+    static bool isDebugEnabled; // if printing out debug info
+    static int problemDim; // model dimension
+    static unsigned numEvalPoints; // # of evaluation points
+
+    static double epsilon;
+    static double c0; // C0 parameter used in paper
 };
 
 #endif /* defined(__arbf_test_Config_h__) */

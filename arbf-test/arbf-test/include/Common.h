@@ -9,9 +9,12 @@
 #ifndef __arbf_test_Common_h__
 #define __arbf_test_Common_h__
 
-#include <vector>
+#include <string>
+#include <array>
 
 #define SQ(x) ((x) * (x))
+//#define EPSILON (1e-5)
+//#define C0 (0.2) // C0 parameter in paper
 
 typedef struct _vertex {
     double x;
@@ -21,9 +24,9 @@ typedef struct _vertex {
     double eig1;
     double eig2;
     double eig3;
-    std::vector<double> eigVec1;
-    std::vector<double> eigVec2;
-    std::vector<double> eigVec3;
+    std::array<double, 3> eigVec1;
+    std::array<double, 3> eigVec2;
+    std::array<double, 3> eigVec3;
 } Vertex;
 
 typedef struct _face {
@@ -38,6 +41,24 @@ typedef struct _edge {
     int b;
     double intensity;
 } Edge;
+
+struct edgeHasher {
+    size_t operator() (const Edge& edge) const {
+        std::string temp = std::to_string(edge.a) + std::to_string(edge.b) + std::to_string(edge.a + edge.b) + std::to_string(edge.a * edge.b);
+        return temp.length();
+    }
+};
+
+struct edgeComparator {
+    bool operator() (const Edge& lhs, const Edge& rhs) const {
+        if ((lhs.a == rhs.a && lhs.b == rhs.b) ||
+            (lhs.a == rhs.b && lhs.b == rhs.a)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+};
 
 enum BasisType { MQ, IMQ, Gaussian, TPS }; // type of basis functions
 

@@ -19,7 +19,7 @@ RawivImage::RawivImage() : m_data(nullptr), m_path(string()) {
     m_dim[2] = 0;
 }
 
-RawivImage::RawivImage(const int dim[3], const float min[3], const float max[3]) {
+RawivImage::RawivImage(const unsigned dim[3], const float min[3], const float max[3]) {
     assert((dim[0] >= 0) && (dim[1] >= 0) && (dim[2] >= 0));
     m_data = new float[dim[0] * dim[1] * dim[2]];
     memset(m_data, 0, sizeof(float) * dim[0] * dim[1] * dim[2]);

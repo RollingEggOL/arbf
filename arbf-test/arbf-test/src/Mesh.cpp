@@ -1,5 +1,5 @@
 //
-//  TriMesh.cpp
+//  Mesh.cpp
 //  arbf-test
 //
 //  Created by Ke Liu on 2/19/16.
@@ -16,7 +16,7 @@
 #include <array>
 #include <vector>
 #include <unordered_set>
-#include "../include/TriMesh.h"
+#include "../include/Mesh.h"
 
 using namespace std;
 

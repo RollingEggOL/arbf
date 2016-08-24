@@ -6,7 +6,7 @@
          contextName = "main:main.cpp">
       </ContextState>
       <ContextState
-         contextName = "ARBFInterpolator::calculateCenters():ARBFInterpolator.cpp">
+         contextName = "ARBFInterpolator::calculateTriangleCenters():ARBFInterpolator.cpp">
          <PersistentStrings>
             <PersistentString
                value = "s_centers[f]">

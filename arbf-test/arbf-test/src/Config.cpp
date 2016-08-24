@@ -10,9 +10,10 @@
 
 using namespace std;
 
-const double Config::EPSILON = 1e-5;
-const double Config::C0 = 0.2;
-bool Config::isUsing2Ring = false;
-bool Config::isUsingISORBF = false;
-bool Config::isPrintingDebugInfo = false;
-int Config::dim = 2; // 2D model by default
+int Config::neighborhoodSize = 0;
+//bool Config::isUsingISORBF = false;
+bool Config::isDebugEnabled = false;
+int Config::problemDim = 2;
+unsigned Config::numEvalPoints = 0;
+double Config::epsilon = 0.0;
+double Config::c0 = 0.0;

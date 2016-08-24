@@ -25,7 +25,7 @@ public:
      * \param min: minimum coordinates
      * \param max: maximum coordinates
      */
-    RawivImage(const int dim[3], const float min[3], const float max[3]);
+    RawivImage(const unsigned dim[3], const float min[3], const float max[3]);
     
     /*
      * Copy constructor

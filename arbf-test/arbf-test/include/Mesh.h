@@ -6,8 +6,8 @@
 //  Copyright (c) 2016 Ke Liu. All rights reserved.
 //
 
-#ifndef __arbf_test_TriMesh_h__
-#define __arbf_test_TriMesh_h__
+#ifndef __arbf_test_Mesh_h__
+#define __arbf_test_Mesh_h__
 
 #include <vector>
 #include <array>
@@ -111,4 +111,4 @@ private:
     double m_maxZ; // maximum z coord
 };
 
-#endif /* defined(__arbf_test_TriMesh_h__) */
+#endif /* defined(__arbf_test_Mesh_h__) */
