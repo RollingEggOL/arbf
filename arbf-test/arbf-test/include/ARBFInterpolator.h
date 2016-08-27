@@ -40,7 +40,7 @@ public:
 
     const std::vector<Vertex>& getTriangleCenters() const;
     const std::vector<Vertex>& getEdgeCenters() const;
-//    const std::vector<Vertex>& getTetrahedronCenters() const;
+    const std::vector<Vertex>& getTetrahedronCenters() const;
     InterpolateResult getResult() const;
     void setMesh(Mesh *mesh);
     void setBasisFunction(BasisFunction *basisFunction);
@@ -50,7 +50,7 @@ public:
     void calculateEdgeCenters();
     void calculateTetrahedronCenters();
     void computeEdgeMetrics();
-//    void computeTetrahedronMetrics();
+    void computeTetrahedronMetrics();
     void interpolate(unsigned numEvalPoints);
 
 private:
@@ -65,6 +65,7 @@ private:
     void rescaleResultData(int low, int high); // rescale result data to range [low, high]
     void thresholdResultData(double maxIntensity); // threshold result data
     double computePSNR(const PPMImage &img1, const PPMImage &img2);
+    Vertex createFalseCenter(const Vertex &trueCenter, const Vertex &vertex, double offsetRatio);
 
 private:
     double m_computeWeight(double r);
@@ -73,10 +74,11 @@ private:
 private:
     std::vector<Vertex> m_centers; // triangle centers
     std::vector<Vertex> m_edgeCenters; // triangle edge centers
-//    std::vector<Vertex> m_tetrahedronCenters; // tetrahedron centers
+    std::vector<Vertex> m_tetrahedronCenters; // tetrahedron centers
     Mesh *m_mesh = nullptr; // Mesh
     BasisFunction *m_basis; // basis function
-    std::vector<Eigen::Matrix3d> m_T; // metric tensor
+    std::vector<Eigen::Matrix3d> m_edgeT; // edge metric tensor
+    std::vector<Eigen::Matrix3d> m_tetrahedronT; // tetrahedron metric tensor
     Eigen::MatrixXd m_distanceMatrix; // A in Ax = u
     Eigen::VectorXd m_u; // u in Ax = u
     Eigen::VectorXd m_coeff; // x in Ax = u

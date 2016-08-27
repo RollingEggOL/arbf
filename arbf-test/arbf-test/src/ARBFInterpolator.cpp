@@ -15,11 +15,11 @@
 #include <tuple>
 #include <vector>
 #include <unordered_set>
+#include <algorithm>
 #include <Eigen/Eigenvalues>
 #include "../include/Config.h"
 #include "../include/ARBFInterpolator.h"
 
-// ARBFInterpolator implementations
 ARBFInterpolator::ARBFInterpolator(): m_basis(nullptr), m_hasCoeffSolved(false) {}
 
 ARBFInterpolator::~ARBFInterpolator() {
@@ -39,9 +39,9 @@ const std::vector<Vertex>& ARBFInterpolator::getEdgeCenters() const {
     return m_edgeCenters;
 }
 
-//const std::vector<Vertex>& ARBFInterpolator::getTetrahedronCenters() const {
-//    return m_tetrahedronCenters;
-//}
+const std::vector<Vertex>& ARBFInterpolator::getTetrahedronCenters() const {
+    return m_tetrahedronCenters;
+}
 
 ARBFInterpolator::InterpolateResult ARBFInterpolator::getResult() const {
     return m_result;
@@ -180,8 +180,36 @@ void ARBFInterpolator::calculateEdgeCenters() {
     }
 }
 
+void ARBFInterpolator::calculateTetrahedronCenters() {
+    double tmpx = 0, tmpy = 0, tmpz = 0;
+
+    for (auto v: m_mesh->getVertices()) {
+        tmpx += v.x;
+        tmpy += v.y;
+        tmpz += v.z;
+    }
+
+    double centerX = tmpx / 4.0; // x at true center
+    double centerY = tmpy / 4.0; // y at true center
+    double centerZ = tmpz / 4.0; // z at true center
+    Vertex trueCenter;
+    trueCenter.x = centerX;
+    trueCenter.y = centerY;
+    trueCenter.z = centerZ;
+    trueCenter.intensity = -1.0;
+    double ratio = 0.0;
+    Vertex falseCenter1 = createFalseCenter(trueCenter, m_centers[1], ratio);
+//    Vertex falseCenter2 = createFalseCenter(trueCenter, m_centers[1], ratio);
+//    Vertex falseCenter3 = createFalseCenter(trueCenter, m_centers[2], ratio);
+//    Vertex falseCenter4 = createFalseCenter(trueCenter, m_centers[3], ratio);
+    m_tetrahedronCenters.push_back(falseCenter1);
+//    m_tetrahedronCenters.push_back(falseCenter2);
+//    m_tetrahedronCenters.push_back(falseCenter3);
+//    m_tetrahedronCenters.push_back(falseCenter4);
+}
+
 void ARBFInterpolator::computeEdgeMetrics() {
-    m_T.resize(m_mesh->getNumEdges());
+    m_edgeT.resize(m_mesh->getNumEdges());
 
     for (int e = 0; e < m_mesh->getNumEdges(); e++) {
         const Vertex& edgeCenter = m_edgeCenters[e];
@@ -211,11 +239,43 @@ void ARBFInterpolator::computeEdgeMetrics() {
         t2(2, 2) = edgeCenter.eig3;
 
         // Use definition: tensor_result = t1 * t2 * t1.transpose()
-        m_T[e] = t1 * t2;
-        m_T[e] = m_T[e] * t1.transpose();
+        m_edgeT[e] = t1 * t2;
+        m_edgeT[e] = m_edgeT[e] * t1.transpose();
     }
 }
 
+void ARBFInterpolator::computeTetrahedronMetrics() {
+    for (auto tetrahedron: m_tetrahedronCenters) {
+        //             |lambda1 0      | |v1T|
+        // T = [v1 v2] |               | |   |
+        //             |0       lambda2| |v2T|
+
+        Eigen::Matrix3d t1, t2;
+        t1(0, 0) = tetrahedron.eigVec1[0];
+        t1(1, 0) = tetrahedron.eigVec1[1];
+        t1(2, 0) = tetrahedron.eigVec1[2];
+        t1(0, 1) = tetrahedron.eigVec2[0];
+        t1(1, 1) = tetrahedron.eigVec2[1];
+        t1(2, 1) = tetrahedron.eigVec2[2];
+        t1(0, 2) = tetrahedron.eigVec3[0];
+        t1(1, 2) = tetrahedron.eigVec3[1];
+        t1(2, 2) = tetrahedron.eigVec3[2];
+
+        t2(0, 0) = tetrahedron.eig1;
+        t2(0, 1) = 0.0;
+        t2(0, 2) = 0.0;
+        t2(1, 0) = 0.0;
+        t2(1, 1) = tetrahedron.eig2;
+        t2(1, 2) = 0.0;
+        t2(2, 0) = 0.0;
+        t2(2, 1) = 0.0;
+        t2(2, 2) = tetrahedron.eig3;
+
+        // Use definition: tensor_result = t1 * t2 * t1.transpose()
+        auto temp = t1 * t2;
+        m_tetrahedronT.push_back(temp * t1.transpose());
+    }
+}
 
 inline double ARBFInterpolator::m_computeWeight(double r) {
     return exp(-SQ(r) / SQ(30.0));
@@ -245,10 +305,10 @@ void ARBFInterpolator::interpolate(unsigned numEvalPoints) {
             for (unsigned j = 0; j < dimY; j++) {
                 for (unsigned i = 0; i < dimX; i++) {
                     double p0[] = { x[i], y[j], 0.0 };
-                    double intensity = 0;
+                    double intensity = 0, phi = 0;
 
                     for (unsigned l = 0; l < dim; l++) {
-                        double r = 0.0;
+                        double r = 0.0, c1 = 0.01;
 
                         if (l < nv) {
                             double p1[] = { m_mesh->getVertices()[l].x, m_mesh->getVertices()[l].y, m_mesh->getVertices()[l].z };
@@ -258,10 +318,10 @@ void ARBFInterpolator::interpolate(unsigned numEvalPoints) {
                             r = m_computeDistance(p0, p1, Eigen::Matrix3d::Identity());
                         } else {
                             double p1[] = { m_edgeCenters[l - nv - nf].x, m_edgeCenters[l - nv - nf].y, m_edgeCenters[l - nv - nf].z };
-                            r = m_computeDistance(p0, p1, m_T[l - nv - nf]);
+                            r = m_computeDistance(p0, p1, m_edgeT[l - nv - nf]);
                         }
 
-                        intensity += (m_basis->phi(r) * m_coeff(l));
+                        intensity += (m_basis->phi(r, c1) * m_coeff(l));
                     }
 
                     intensities[j*dimX+i] = intensity;
@@ -310,6 +370,7 @@ void ARBFInterpolator::interpolate(unsigned numEvalPoints) {
             y = linspace(m_mesh->getMinY(), m_mesh->getMaxY(), dimY);
             z = linspace(m_mesh->getMinZ(), m_mesh->getMaxZ(), dimZ);
             dim = nv + nf + 1;
+//            dim = nv + nf + 4;
 
             //    cout << "\nx = ";
             //    copy(x.begin(), x.end(), ostream_iterator<double>(cout, ", "));
@@ -318,78 +379,91 @@ void ARBFInterpolator::interpolate(unsigned numEvalPoints) {
             //    cout << "\nz = ";
             //    copy(z.begin(), z.end(), ostream_iterator<double>(cout, ", "));
 
-            double centerX = (m_mesh->getMinX() + m_mesh->getMaxX()) / 2.0,
-                    centerY = (m_mesh->getMinY() + m_mesh->getMaxY()) / 2.0,
-                    centerZ = (m_mesh->getMinZ() + m_mesh->getMaxZ()) / 2.0;
+//            double centerX = (m_mesh->getMinX() + m_mesh->getMaxX()) / 2.0,
+//                    centerY = (m_mesh->getMinY() + m_mesh->getMaxY()) / 2.0,
+//                    centerZ = (m_mesh->getMinZ() + m_mesh->getMaxZ()) / 2.0;
 
             for (int k = 0; k < dimZ; k++) {
                 for (int j = 0; j < dimY; j++) {
                     for (int i = 0; i < dimX; i++) {
                         double p0[] = { x[i], y[j], z[k] };
                         double intensity = 0;
+                        Eigen::Matrix3d tensor;
+
                         for (int l = 0; l < dim; l++) {
-                            double p1[] = { centerX, centerY, centerZ };
+//                            double p1[] = { centerX, centerY, centerZ };
+                            double p1[] = {0, 0, 0};
+                            double c1 = 0.01;
 
                             if (l < nv) {
                                 p1[0] = m_mesh->getVertices()[l].x;
                                 p1[1] = m_mesh->getVertices()[l].y;
                                 p1[2] = m_mesh->getVertices()[l].z;
+                                tensor = Eigen::Matrix3d::Identity();
                             } else if (l < (nv + nf)) {
                                 p1[0] = m_centers[l - nv].x;
                                 p1[1] = m_centers[l - nv].y;
                                 p1[2] = m_centers[l - nv].z;
+                                tensor = Eigen::Matrix3d::Identity();
+                            } else {
+                                p1[0] = m_tetrahedronCenters[l - nv - nf].x;
+                                p1[1] = m_tetrahedronCenters[l - nv - nf].y;
+                                p1[2] = m_tetrahedronCenters[l - nv - nf].z;
+//                                tensor = m_tetrahedronT[l - nv - nf];
+                                tensor = Eigen::Matrix3d::Identity();
+                                c1 = 0;
                             }
 
-                            double r = m_computeDistance(p0, p1, Eigen::Matrix3d::Identity());
-                            intensity += (m_basis->phi(r) * m_coeff(l));
+                            double r = m_computeDistance(p0, p1, tensor);
+                            intensity += (m_basis->phi(r, c1) * m_coeff(l));
                         }
                         intensities[k*dimX*dimY + j*dimX + i] = intensity;
                     }
                 }
             }
 
-//            std::cout << "\n----- Intensity at face centers -----\n";
-//            for (int k = 0; k < dimZ; k++) {
-//                for (int j = 0; j < dimY; j++) {
-//                    for (int i = 0; i < dimX; i++) {
-//                        for (int v = 0; v < m_mesh->getNumVertices(); v++) {
-//                            if (std::abs(x[i] - m_mesh->getVertices()[v].x) < 1e-6 &&
-//                                std::abs(y[j] - m_mesh->getVertices()[v].y) < 1e-6 &&
-//                                std::abs(z[k] - m_mesh->getVertices()[v].z) < 1e-6)
-//                            {
-//                                printf("\tAt vert[%d][%lf, %lf, %lf], intensity[%d, %d, %d][%lf, %lf, %lf] = %lf\n",
-//                                       v, m_mesh->getVertices()[v].x, m_mesh->getVertices()[v].y, m_mesh->getVertices()[v].z, i, j, k,
-//                                       x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
-//                                break;
-//                            }
-//                        }
-//
-//                        for (int f = 0; f < m_mesh->getNumFaces(); f++) {
-//                            if (std::abs(x[i] - getTriangleCenters()[f].x) < 1e-6 &&
-//                                std::abs(y[j] - getTriangleCenters()[f].y) < 1e-6 &&
-//                                std::abs(z[k] - getTriangleCenters()[f].z) < 1e-6)
-//                            {
-//                                printf("\tAt face[%d][%lf, %lf, %lf], intensity[%d, %d, %d][%lf, %lf, %lf] = %lf\n",
-//                                       f, getTriangleCenters()[f].x, getTriangleCenters()[f].y, getTriangleCenters()[f].z, i, j, k,
-//                                       x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
-//                                break;
-//                            }
-//                        }
-//
-//                        if (std::abs(x[i] - (m_mesh->getMinX()+m_mesh->getMaxX())/2.0) < 1e-6 &&
-//                            std::abs(y[j] - (m_mesh->getMinY()+m_mesh->getMaxY())/2.0) < 1e-6 &&
-//                            std::abs(z[k] - (m_mesh->getMinZ()+m_mesh->getMaxZ())/2.0) < 1e-6)
-//                        {std::
-//                            printf("\tAt center[%lf, %lf, %lf], intensity[%d, %d, %d][%lf, %lf, %lf] = %lf\n",
-//                                   (m_mesh->getMinX()+m_mesh->getMaxX())/2.0,
-//                                   (m_mesh->getMinY()+m_mesh->getMaxY())/2.0,
-//                                   (m_mesh->getMinZ()+m_mesh->getMaxZ())/2.0, i, j, k,
-//                                   x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
-//                        }
-//                    }
-//                }
-//            }
-//            std::cout << "\n" << "-----" << std::endl;
+            std::cout << "\n----- Intensity at face centers -----\n";
+            for (int k = 0; k < dimZ; k++) {
+                for (int j = 0; j < dimY; j++) {
+                    for (int i = 0; i < dimX; i++) {
+                        for (int v = 0; v < m_mesh->getNumVertices(); v++) {
+                            if (std::abs(x[i] - m_mesh->getVertices()[v].x) < 1e-6 &&
+                                std::abs(y[j] - m_mesh->getVertices()[v].y) < 1e-6 &&
+                                std::abs(z[k] - m_mesh->getVertices()[v].z) < 1e-6)
+                            {
+                                printf("\tAt vertex[%d][%lf, %lf, %lf], intensity[%d, %d, %d][%lf, %lf, %lf] = %lf\n",
+                                       v, m_mesh->getVertices()[v].x, m_mesh->getVertices()[v].y, m_mesh->getVertices()[v].z,
+                                       i, j, k, x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
+                                break;
+                            }
+                        }
+
+                        for (int f = 0; f < m_mesh->getNumFaces(); f++) {
+                            if (std::abs(x[i] - m_centers[f].x) < 1e-6 && std::abs(y[j] - m_centers[f].y) < 1e-6 && std::abs(z[k] - m_centers[f].z) < 1e-6)
+                            {
+                                printf("\tAt face[%d][%lf, %lf, %lf], intensity[%d, %d, %d][%lf, %lf, %lf] = %lf\n",
+                                       f, getTriangleCenters()[f].x, getTriangleCenters()[f].y, getTriangleCenters()[f].z,
+                                       i, j, k, x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
+                                break;
+                            }
+                        }
+
+                        for (unsigned c = 0; c < m_tetrahedronCenters.size(); c++) {
+                            if (std::abs(x[i] - m_tetrahedronCenters[c].x) < 1e-6 &&
+                                std::abs(y[j] - m_tetrahedronCenters[c].y) < 1e-6 &&
+                                std::abs(z[k] - m_tetrahedronCenters[c].z) < 1e-6)
+                            {
+                                printf("\tAt false center[%d][%lf, %lf, %lf], intensity[%d, %d, %d][%lf, %lf, %lf] = %lf\n",
+                                       c, m_tetrahedronCenters[c].x, m_tetrahedronCenters[c].x, m_tetrahedronCenters[c].x,
+                                       i, j, k, x[i], y[j], z[k], intensities[k*dimY*dimX+j*dimX+i]);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            std::cout << "\n" << "-----" << std::endl;
+            break;
     }
 
 
@@ -495,13 +569,28 @@ ARBFInterpolator::Eigens3d ARBFInterpolator::computeEigens(const Eigen::Matrix3d
     assert(values[0].imag() < std::abs(Config::epsilon) &&
            values[1].imag() < std::abs(Config::epsilon) &&
            values[2].imag() < std::abs(Config::epsilon));
+
     Eigenvalues3d eigenvalues = { values(0).real(), values(1).real(), values(2).real() };
+    auto minmax = std::minmax_element(eigenvalues.begin(), eigenvalues.end());
+    auto minPos = minmax.first - eigenvalues.begin();
+    auto maxPos = minmax.second - eigenvalues.begin();
+    unsigned middlePos = 0;
+
+    for (unsigned i = 0; i < eigenvalues.size(); i++) {
+        if (eigenvalues[i] != *minmax.first && eigenvalues[i] != *minmax.second) {
+            middlePos = i;
+            break;
+        }
+    }
+
+    // put the minimum eigenvalues first
+    Eigenvalues3d sortedEigenvalues = { eigenvalues[minPos], eigenvalues[middlePos], eigenvalues[maxPos] };
     auto vectors = solver.eigenvectors();
-    std::array<double, 3> vec1 = { vectors(0, 0).real(), vectors(0, 1).real(), vectors(0, 2).real() };
-    std::array<double, 3> vec2 = { vectors(1, 0).real(), vectors(1, 1).real(), vectors(1, 2).real() };
-    std::array<double, 3> vec3 = { vectors(2, 0).real(), vectors(2, 1).real(), vectors(2, 2).real() };
+    std::array<double, 3> vec1 = { vectors.col(minPos)[0].real(), vectors.col(minPos)[1].real(), vectors.col(minPos)[2].real() };
+    std::array<double, 3> vec2 = { vectors.col(middlePos)[0].real(), vectors.col(middlePos)[1].real(), vectors.col(middlePos)[2].real() };
+    std::array<double, 3> vec3 = { vectors.col(maxPos)[0].real(), vectors.col(maxPos)[1].real(), vectors.col(maxPos)[2].real() };
     Eigenvectors3d eigenvectors = { vec1, vec2, vec3 };
-    return std::make_tuple(eigenvalues, eigenvectors);
+    return std::make_tuple(sortedEigenvalues, eigenvectors);
 }
 
 void ARBFInterpolator::rescaleEigenvalues(Eigenvalues2d &values) {
@@ -631,6 +720,7 @@ void ARBFInterpolator::solveDistanceMatrix2d() {
         double p0[] = { vi->x, vi->y, vi->z };
 
         for (int j = 0; j < matrixDimension; j++) {
+            double c1 = 0.01;
             if (j < nv) {
                 vj = &m_mesh->getVertices()[j];
                 tensor = Eigen::Matrix3d::Identity();
@@ -639,12 +729,12 @@ void ARBFInterpolator::solveDistanceMatrix2d() {
                 tensor = Eigen::Matrix3d::Identity();
             } else {
                 vj = &getEdgeCenters()[j - nv - nf];
-                tensor = m_T[j-nv-nf];
+                tensor = m_edgeT[j-nv-nf];
             }
 
             double p1[] = { vj->x, vj->y, vj->z };
             double r = m_computeDistance(p0, p1, tensor);
-            m_distanceMatrix(i, j) = m_basis->phi(r);
+            m_distanceMatrix(i, j) = m_basis->phi(r, c1);
         };
     }
 
@@ -657,19 +747,22 @@ void ARBFInterpolator::solveDistanceMatrix3d() {
     unsigned nf = m_mesh->getNumFaces();
 
     unsigned matrixDimension = nv + nf + 1; // 1 means tetrahedron center
+//    unsigned matrixDimension = nv + nf + 4; // 4 false tetrahedron centers
 
     m_distanceMatrix.resize(matrixDimension, matrixDimension);
     m_u.resize(matrixDimension);
     const Vertex *vi = nullptr, *vj = nullptr;
-    Eigen::Matrix3d tensor = Eigen::Matrix3d::Identity(); // use RBF for 3D
+//    Eigen::Matrix3d tensor = Eigen::Matrix3d::Identity(); // use RBF for 3D
+    Eigen::Matrix3d tensor;
 
     // tetrahedron center
-    double centerX = (m_mesh->getMinX() + m_mesh->getMaxX()) / 2.0;
-    double centerY = (m_mesh->getMinY() + m_mesh->getMaxY()) / 2.0;
-    double centerZ = (m_mesh->getMinZ() + m_mesh->getMaxZ()) / 2.0;
+//    double centerX = (m_mesh->getMinX() + m_mesh->getMaxX()) / 2.0;
+//    double centerY = (m_mesh->getMinY() + m_mesh->getMaxY()) / 2.0;
+//    double centerZ = (m_mesh->getMinZ() + m_mesh->getMaxZ()) / 2.0;
 
     for (int i = 0; i < matrixDimension; i++) {
-        double p0[] = { centerX, centerY, centerZ };
+//        double p0[] = { centerX, centerY, centerZ };
+        double p0[] = {0, 0, 0};
         m_u(i) = -1;
 
         if (i < nv) {
@@ -679,7 +772,13 @@ void ARBFInterpolator::solveDistanceMatrix3d() {
             p0[2] = vi->z;
             m_u(i) = vi->intensity;
         } else if (i < (nv + nf)) {
-            vi = &getTriangleCenters()[i - nv];
+            vi = &m_centers[i - nv];
+            p0[0] = vi->x;
+            p0[1] = vi->y;
+            p0[2] = vi->z;
+            m_u(i) = vi->intensity;
+        } else {
+            vi = &m_tetrahedronCenters[i - nv - nf];
             p0[0] = vi->x;
             p0[1] = vi->y;
             p0[2] = vi->z;
@@ -687,27 +786,43 @@ void ARBFInterpolator::solveDistanceMatrix3d() {
         }
 
         for (int j = 0; j < matrixDimension; j++) {
-            double p1[] = { centerX, centerY, centerZ };
+//            double p1[] = { centerX, centerY, centerZ };
+            double p1[] = {0, 0, 0};
+            double c1 = 0.01;
 
             if (j < nv) {
                 vj = &m_mesh->getVertices()[j];
                 p1[0] = vj->x;
                 p1[1] = vj->y;
                 p1[2] = vj->z;
+                tensor = Eigen::Matrix3d::Identity();
             } else if (j < (nv + nf)) {
                 vj = &getTriangleCenters()[j - nv];
                 p1[0] = vj->x;
                 p1[1] = vj->y;
                 p1[2] = vj->z;
+                tensor = Eigen::Matrix3d::Identity();
+            } else {
+                vj = &getTetrahedronCenters()[j - nv - nf];
+                p1[0] = vj->x;
+                p1[1] = vj->y;
+                p1[2] = vj->z;
+//                tensor = m_tetrahedronT[j - nv - nf];
+                tensor = Eigen::Matrix3d::Identity();
+                c1 = 0;
             }
 
             double r = m_computeDistance(p0, p1, tensor);
-            m_distanceMatrix(i, j) = m_basis->phi(r);
+            m_distanceMatrix(i, j) = m_basis->phi(r, c1);
         }
     }
 
     m_coeff = m_distanceMatrix.fullPivLu().solve(m_u); // call Eigen library to solve
+    std::cout << m_distanceMatrix << std::endl;
+    std::cout << m_coeff << std::endl;
+
     m_hasCoeffSolved = true;
+//    std::cout << m_coeff << std::endl;
 }
 
 void ARBFInterpolator::rescaleResultData(int low, int high) {
@@ -772,4 +887,45 @@ void ARBFInterpolator::thresholdResultData(double maxIntensity) {
 //            }
 //        }
 //    }
+}
+
+Vertex ARBFInterpolator::createFalseCenter(const Vertex &trueCenter, const Vertex &vertex, double offsetRatio) {
+    double falseX = trueCenter.x + offsetRatio * (vertex.x - trueCenter.x);
+    double falseY = trueCenter.y + offsetRatio * (vertex.y - trueCenter.y);
+    double falseZ = trueCenter.z + offsetRatio * (vertex.z - trueCenter.z);
+    Vertex falseCenter;
+    falseCenter.x = falseX;
+    falseCenter.y = falseY;
+    falseCenter.z = falseZ;
+    falseCenter.intensity = trueCenter.intensity;
+    double dx = vertex.x - falseCenter.x;
+    double dy = vertex.y - falseCenter.y;
+    double dz = vertex.z - falseCenter.z;
+    double norm = std::sqrt(SQ(dx) + SQ(dy) + SQ(dz));
+    double gradX = dx / norm;
+    double gradY = dy / norm;
+    double gradZ = dz / norm;
+    Eigen::Matrix3d mEdge;
+    mEdge(0, 0) = gradX * gradX;
+    mEdge(0, 1) = gradX * gradY;
+    mEdge(0, 2) = gradX * gradZ;
+    mEdge(1, 0) = gradY * gradX;
+    mEdge(1, 1) = gradY * gradY;
+    mEdge(1, 2) = gradY * gradZ;
+    mEdge(2, 0) = gradZ * gradX;
+    mEdge(2, 1) = gradZ * gradY;
+    mEdge(2, 2) = gradZ * gradZ;
+    std::cout << mEdge << std::endl;
+    Eigens3d eigens = computeEigens(mEdge); // compute eigenvalues and eigenvectors
+    Eigenvalues3d &eigenvalues = std::get<0>(eigens);
+    printf("Eigenvalues: %lf, %lf, %lf\n", eigenvalues[0], eigenvalues[1], eigenvalues[2]);
+    Eigenvectors3d &eigenvectors = std::get<1>(eigens);
+    rescaleEigenvalues(eigenvalues);
+    falseCenter.eig1 = eigenvalues[0];
+    falseCenter.eig2 = eigenvalues[1];
+    falseCenter.eig3 = eigenvalues[2];
+    falseCenter.eigVec1 = { eigenvectors[0][0], eigenvectors[0][1], eigenvectors[0][2] };
+    falseCenter.eigVec2 = { eigenvectors[1][0], eigenvectors[1][1], eigenvectors[1][2] };
+    falseCenter.eigVec3 = { eigenvectors[2][0], eigenvectors[2][1], eigenvectors[2][2] };
+    return falseCenter;
 }
