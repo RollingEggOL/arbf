@@ -13,24 +13,23 @@ BasisFunction::~BasisFunction() {}
 // MQBasisFunction implementations
 MQBasisFunction::~MQBasisFunction() {}
 
-double MQBasisFunction::phi(double radial) const {
-    return std::sqrt(SQ(radial) + SQ(0.01));
+double MQBasisFunction::phi(double radial, double c) const {
+    return std::sqrt(SQ(radial) + SQ(c));
 }
 
 
 // IMQBasisFunction implementations
 IMQBasisFunction::~IMQBasisFunction() {}
 
-double IMQBasisFunction::phi(double radial) const {
-    return 1.0 / (std::sqrt(SQ(radial) + SQ(1.8)));
+double IMQBasisFunction::phi(double radial, double c) const {
+    return 1.0 / (std::sqrt(SQ(radial) + SQ(c)));
 }
 
 
 // GaussianBasisFunction implementations
 GaussianBasisFunction::~GaussianBasisFunction() {}
 
-double GaussianBasisFunction::phi(double radial) const {
-    double c = 0.01;
+double GaussianBasisFunction::phi(double radial, double c) const {
     return std::exp(-SQ(c*radial));
 }
 
@@ -38,7 +37,7 @@ double GaussianBasisFunction::phi(double radial) const {
 // TPSBasisFunction implementations
 TPSBasisFunction::~TPSBasisFunction() {}
 
-double TPSBasisFunction::phi(double radial) const {
+double TPSBasisFunction::phi(double radial, double c) const {
     if (std::abs(radial) < Config::epsilon) {
         return 0;
     } else {
