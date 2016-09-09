@@ -20,18 +20,19 @@ void OneRingMeshNeighborhood::computeVertexNeighbors(const Mesh *mesh) {
     m_vf_1ring.resize(mesh->getNumVertices());
 
     // build 1-ring VERTEX <-> FACE mapping
+    auto faces = mesh->getFacesAsList();
     for (int f = 0; f < mesh->getNumFaces(); ++f) {
-        m_vf_1ring[mesh->getFaces()[f].a].push_back(f);
-        m_vf_1ring[mesh->getFaces()[f].b].push_back(f);
-        m_vf_1ring[mesh->getFaces()[f].c].push_back(f);
+        m_vf_1ring[faces[f].a].push_back(f);
+        m_vf_1ring[faces[f].b].push_back(f);
+        m_vf_1ring[faces[f].c].push_back(f);
     }
 
     // find 1-ring VERTEX <-> VERTEX mapping
     for (int v = 0; v < mesh->getNumVertices(); ++v) {
         for (size_t j = 0; j < m_vf_1ring[v].size(); ++j) {
-            m_vv_1ring[v].insert(mesh->getFaces()[m_vf_1ring[v][j]].a);
-            m_vv_1ring[v].insert(mesh->getFaces()[m_vf_1ring[v][j]].b);
-            m_vv_1ring[v].insert(mesh->getFaces()[m_vf_1ring[v][j]].c);
+            m_vv_1ring[v].insert(faces[m_vf_1ring[v][j]].a);
+            m_vv_1ring[v].insert(faces[m_vf_1ring[v][j]].b);
+            m_vv_1ring[v].insert(faces[m_vf_1ring[v][j]].c);
         }
     }
 
@@ -76,11 +77,12 @@ void OneRingMeshNeighborhood::computeVertexNeighbors(const Mesh *mesh) {
 
 void OneRingMeshNeighborhood::computeFaceNeighbors(const Mesh *mesh) {
     m_ff_1ring.resize(mesh->getNumFaces());
+    auto faces = mesh->getFacesAsList();
 
     for (int f = 0; f < mesh->getNumFaces(); ++f) {
-        int a = mesh->getFaces()[f].a;
-        int b = mesh->getFaces()[f].b;
-        int c = mesh->getFaces()[f].c;
+        int a = faces[f].a;
+        int b = faces[f].b;
+        int c = faces[f].c;
 
         for (size_t j = 0; j < m_vf_1ring[a].size(); ++j) {
             m_ff_1ring[f].insert(m_vf_1ring[a][j]);
@@ -151,14 +153,15 @@ void TwoRingMeshNeighborhood::computeVertexNeighbors(const Mesh *mesh) {
 
     m_vv_2ring.resize(mesh->getNumVertices());
     m_vf_2ring.resize(mesh->getNumVertices());
+    auto faces = mesh->getFacesAsList();
 
     // build 2-ring VERTEX <-> FACE mapping
     m_vf_2ring = m_vf_1ring;
     for (int i = 0; i < mesh->getNumFaces(); ++i) {
         // 3 vertices of current face
-        int a = mesh->getFaces()[i].a;
-        int b = mesh->getFaces()[i].b;
-        int c = mesh->getFaces()[i].c;
+        int a = faces[i].a;
+        int b = faces[i].b;
+        int c = faces[i].c;
 
         // neighboring vertices of 3 vertices
         const std::set<int> &neib1 = m_vv_1ring[a];
@@ -199,9 +202,9 @@ void TwoRingMeshNeighborhood::computeVertexNeighbors(const Mesh *mesh) {
     m_vv_2ring = m_vv_1ring;
     for (int i = 0; i < mesh->getNumVertices(); ++i) {
         for (int j = 0; j < m_vf_2ring[i].size(); ++j) {
-            m_vv_2ring[i].insert(mesh->getFaces()[m_vf_2ring[i][j]].a);
-            m_vv_2ring[i].insert(mesh->getFaces()[m_vf_2ring[i][j]].b);
-            m_vv_2ring[i].insert(mesh->getFaces()[m_vf_2ring[i][j]].c);
+            m_vv_2ring[i].insert(faces[m_vf_2ring[i][j]].a);
+            m_vv_2ring[i].insert(faces[m_vf_2ring[i][j]].b);
+            m_vv_2ring[i].insert(faces[m_vf_2ring[i][j]].c);
         }
     }
 
@@ -251,11 +254,12 @@ void TwoRingMeshNeighborhood::computeFaceNeighbors(const Mesh *mesh) {
     }
 
     m_ff_2ring.resize(mesh->getNumFaces());
+    auto faces = mesh->getFacesAsList();
 
     for (int f = 0; f < mesh->getNumFaces(); ++f) {
-        int a = mesh->getFaces()[f].a;
-        int b = mesh->getFaces()[f].b;
-        int c = mesh->getFaces()[f].c;
+        int a = faces[f].a;
+        int b = faces[f].b;
+        int c = faces[f].c;
 
         for (int j = 0; j < m_vf_2ring[a].size(); ++j) {
             m_ff_2ring[f].insert(m_vf_2ring[a][j]);

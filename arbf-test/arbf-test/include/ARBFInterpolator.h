@@ -38,17 +38,17 @@ public:
     ARBFInterpolator();
     virtual ~ARBFInterpolator();
 
-    const std::vector<Vertex>& getTriangleCenters() const;
-    const std::vector<Vertex>& getEdgeCenters() const;
-    const std::vector<Vertex>& getTetrahedronCenters() const;
+//    const std::vector<Vertex>& getTriangleCenters() const;
+//    const std::vector<Vertex>& getEdgeCenters() const;
+//    const std::vector<Vertex>& getTetrahedronCenters() const;
     InterpolateResult getResult() const;
     void setMesh(Mesh *mesh);
     void setBasisFunction(BasisFunction *basisFunction);
     void solveDistanceMatrix2d();
     void solveDistanceMatrix3d();
-    void calculateTriangleCenters();
-    void calculateEdgeCenters();
-    void calculateTetrahedronCenters();
+//    void calculateTriangleCenters();
+//    void calculateEdgeCenters();
+//    void calculateTetrahedronCenters();
     void computeEdgeMetrics();
     void computeTetrahedronMetrics();
     void interpolate(unsigned numEvalPoints);
@@ -58,23 +58,27 @@ private:
     Eigens3d computeEigens(const Eigen::Matrix3d &matrix);
     void rescaleEigenvalues(Eigenvalues2d &values); // for 2D
     void rescaleEigenvalues(Eigenvalues3d &values); // for 3D
-    bool m_isInTriangle(const double *x, int triangleId);
+    bool m_isInTriangle(const double *x, int ta, int tb, int tc);
+    bool m_isInTetrahedron(const double *x, int tetrahedronId);
+    bool m_isInAnyTetrahedron(const double *x); // check if a point x is in any tetrahedron
     double m_computeDistance(const double *v0, const double *v1); // Euclidean distance
     double m_computeDistance(const double *v0, const double *v1, const Eigen::Matrix3d& T); // distance of tensor
+    double m_computeDistance(const double *x, const double *v0, const double *v1); // distance between point x and line segment [v0, v1]
+    double m_computeDistance(const double *v0, const double *v1, const double *w0, const double *w1); // distance of line segment [v0, v1] and [w0, w1]
     std::vector<double> linspace(double a, double b, int n); // generate n points between a and b inclusively
     void rescaleResultData(int low, int high); // rescale result data to range [low, high]
     void thresholdResultData(double maxIntensity); // threshold result data
     double computePSNR(const PPMImage &img1, const PPMImage &img2);
-    Vertex createFalseCenter(const Vertex &trueCenter, const Vertex &vertex, double offsetRatio);
+//    Vertex createFalseCenter(const Vertex &trueCenter, const Vertex &vertex, double offsetRatio);
 
 private:
     double m_computeWeight(double r);
     double m_computeRMSE(const PPMImage &img1, const PPMImage &img2);
 
 private:
-    std::vector<Vertex> m_centers; // triangle centers
-    std::vector<Vertex> m_edgeCenters; // triangle edge centers
-    std::vector<Vertex> m_tetrahedronCenters; // tetrahedron centers
+//    std::vector<Vertex> m_centers; // triangle centers
+//    std::vector<Vertex> m_edgeCenters; // triangle edge centers
+//    std::vector<Vertex> m_tetrahedronCenters; // tetrahedron centers
     Mesh *m_mesh = nullptr; // Mesh
     BasisFunction *m_basis; // basis function
     std::vector<Eigen::Matrix3d> m_edgeT; // edge metric tensor

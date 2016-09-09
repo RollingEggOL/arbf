@@ -22,8 +22,7 @@
 //////////////////////////////////////////////////////
 //#define WEIGHTED // take weighted average
 
-class Config
-{
+class Config {
 public:
     static int neighborhoodSize;
 //    static bool isUsingISORBF; // if use ISO-RBF for eigenvalues
