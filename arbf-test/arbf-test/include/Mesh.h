@@ -6,8 +6,8 @@
 //  Copyright (c) 2016 Ke Liu. All rights reserved.
 //
 
-#ifndef __arbf_test_Mesh_h__
-#define __arbf_test_Mesh_h__
+#ifndef ARBF_TEST_MESH_H
+#define ARBF_TEST_MESH_H
 
 #include <vector>
 #include <array>
@@ -16,90 +16,49 @@
 
 class Mesh {
 public:
-    virtual ~Mesh() {}
+    Mesh();
+    Mesh(const Mesh &other);
+    virtual ~Mesh();
+    virtual void exportToFile(const char *filename);
 
-    virtual unsigned getNumVertices() const = 0;
-    virtual unsigned getNumFaces() const = 0;
-    virtual unsigned getNumEdges() const = 0;
-    virtual const std::vector<Vertex> &getVertices() const = 0;
-    virtual const std::vector<Face> &getFaces() const = 0;
-    virtual const std::unordered_set<Edge, edgeHasher, edgeComparator> &getEdges() const = 0;
-    virtual double getMinX() const = 0;
-    virtual double getMaxX() const = 0;
-    virtual double getMinY() const = 0;
-    virtual double getMaxY() const = 0;
-    virtual double getMinZ() const = 0;
-    virtual double getMaxZ() const = 0;
-    virtual std::array<double, 2> getMinMaxX() const = 0;
-    virtual std::array<double, 2> getMinMaxY() const = 0;
-    virtual std::array<double, 2> getMinMaxZ() const = 0;
+    Mesh &operator=(const Mesh &other);
+    unsigned getNumVertices() const;
+    unsigned getNumFaces() const;
+    unsigned getNumEdges() const;
+    const std::vector<Vertex> &getVertices() const;
+    const std::unordered_set<Face> &getFaces() const;
+    const std::vector<Face> getFacesAsList() const;
+    const std::unordered_set<Edge> &getEdges() const;
+    const std::vector<Edge> getEdgesAsList() const;
+    double getMinX() const;
+    double getMaxX() const;
+    double getMinY() const;
+    double getMaxY() const;
+    double getMinZ() const;
+    double getMaxZ() const;
+    std::array<double, 2> getMinMaxX() const;
+    std::array<double, 2> getMinMaxY() const;
+    std::array<double, 2> getMinMaxZ() const;
+    void setNumVertices(unsigned value);
+    void setNumFaces(unsigned value);
+    void setNumEdges(unsigned value);
+    void setMinX(double value);
+    void setMaxX(double value);
+    void setMinY(double value);
+    void setMaxY(double value);
+    void setMinZ(double value);
+    void setMaxZ(double value);
+    void setMinMaxX(const std::array<double, 2> &value);
+    void setMinMaxY(const std::array<double, 2> &value);
+    void setMinMaxZ(const std::array<double, 2> &value);
+    void addVertex(const Vertex &vertex);
+    void addFace(const Face &face);
+    void addEdge(const Edge &edge);
 
-    virtual void setNumVertices(unsigned value) = 0;
-    virtual void setNumFaces(unsigned value) = 0;
-    virtual void setNumEdges(unsigned value) = 0;
-    virtual void setMinX(double value) = 0;
-    virtual void setMaxX(double value) = 0;
-    virtual void setMinY(double value) = 0;
-    virtual void setMaxY(double value) = 0;
-    virtual void setMinZ(double value) = 0;
-    virtual void setMaxZ(double value) = 0;
-    virtual void setMinMaxX(const std::array<double, 2> &value) = 0;
-    virtual void setMinMaxY(const std::array<double, 2> &value) = 0;
-    virtual void setMinMaxZ(const std::array<double, 2> &value) = 0;
-
-    virtual void addVertex(const Vertex &vertex) = 0;
-    virtual void addFace(const Face &face) = 0;
-    virtual void addEdge(const Edge &edge) = 0;
-};
-
-class TriMesh: public Mesh {
-public:
-    TriMesh();
-    TriMesh(const TriMesh &other);
-    virtual ~TriMesh();
-    TriMesh &operator=(const TriMesh &other);
-
-    virtual unsigned getNumVertices() const;
-    virtual unsigned getNumFaces() const;
-    virtual unsigned getNumEdges() const;
-    virtual const std::vector<Vertex> &getVertices() const;
-    virtual const std::vector<Face> &getFaces() const;
-    virtual const std::unordered_set<Edge, edgeHasher, edgeComparator> &getEdges() const;
-    virtual double getMinX() const;
-    virtual double getMaxX() const;
-    virtual double getMinY() const;
-    virtual double getMaxY() const;
-    virtual double getMinZ() const;
-    virtual double getMaxZ() const;
-    virtual std::array<double, 2> getMinMaxX() const;
-    virtual std::array<double, 2> getMinMaxY() const;
-    virtual std::array<double, 2> getMinMaxZ() const;
-
-    virtual void setNumVertices(unsigned value);
-    virtual void setNumFaces(unsigned value);
-    virtual void setNumEdges(unsigned value);
-    virtual void setMinX(double value);
-    virtual void setMaxX(double value);
-    virtual void setMinY(double value);
-    virtual void setMaxY(double value);
-    virtual void setMinZ(double value);
-    virtual void setMaxZ(double value);
-    virtual void setMinMaxX(const std::array<double, 2> &value);
-    virtual void setMinMaxY(const std::array<double, 2> &value);
-    virtual void setMinMaxZ(const std::array<double, 2> &value);
-
-    virtual void addVertex(const Vertex &vertex);
-    virtual void addFace(const Face &face);
-    virtual void addEdge(const Edge &edge);
-    
-private:
-    void write(const char *path);
-    void deform(); // randomize input to make deformed mesh
-    
-private:
-    std::vector<Vertex> m_vertex; // vertices
-    std::vector<Face> m_face; // faces
-    std::unordered_set<Edge, edgeHasher, edgeComparator> m_edge; // edges
+protected:
+    std::vector<Vertex> m_vertices; // vertices
+    std::unordered_set<Face> m_faces; // faces
+    std::unordered_set<Edge> m_edges; // edges
     unsigned m_nv; // # of vertices
     unsigned m_nf; // # of faces
     unsigned m_ne; // # of edges
@@ -111,4 +70,4 @@ private:
     double m_maxZ; // maximum z coord
 };
 
-#endif /* defined(__arbf_test_Mesh_h__) */
+#endif //ARBF_TEST_MESH_H
