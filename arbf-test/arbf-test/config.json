@@ -5,7 +5,7 @@
     },
     "run_configs": {
         "project_dir": "/Users/keliu/Projects/arbf/arbf-test/arbf-test",
-        "mesh_filename": "tetrahedron.tri",
+        "mesh_filename": "icosahedron.tet",
         "neighborhood_size": 2,
         "problem_dim": 3,
         "evaluation_points": 2097152,
