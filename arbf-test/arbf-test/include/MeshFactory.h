@@ -14,16 +14,25 @@
 class MeshFactory {
 public:
     virtual ~MeshFactory();
-    virtual std::unique_ptr<Mesh> createMeshFromFile(const char* filename) = 0;
+    virtual std::unique_ptr<Mesh> createMeshFromFile(const char *filename) = 0;
 };
 
 /*
- * Concrete factory to create mesh.
+ * Concrete factory to create TriMesh.
  */
 class TriMeshFactory: public MeshFactory {
 public:
     ~TriMeshFactory();
-    virtual std::unique_ptr<Mesh> createMeshFromFile(const char* filename);
+    virtual std::unique_ptr<Mesh> createMeshFromFile(const char *filename);
+};
+
+/*
+ * Concrete factory to create TetMesh.
+ */
+class TetMeshFactory: public MeshFactory {
+public:
+    ~TetMeshFactory();
+    virtual std::unique_ptr<Mesh> createMeshFromFile(const char *filename);
 };
 
 /*
