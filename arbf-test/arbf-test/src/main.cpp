@@ -82,7 +82,8 @@ int main(int argc, const char **argv) {
     // read mesh
     start = total = clock();
     string file_path = projDir + "/data/" + meshFilename;
-    unique_ptr<MeshFactory> meshFactory(new TriMeshFactory());
+//    unique_ptr<MeshFactory> meshFactory(new TriMeshFactory());
+    unique_ptr<MeshFactory> meshFactory(new TetMeshFactory());
 //    MeshFactoryWithEnlargedBoundingBox boundingBoxFactory;
 //    boundingBoxFactory.setMeshFactory(std::move(meshFactory));
     unique_ptr<Mesh> mesh = meshFactory->createMeshFromFile(file_path.c_str());
@@ -93,30 +94,29 @@ int main(int argc, const char **argv) {
     printf("Reading mesh ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
 
     ARBFInterpolator interpolator;
-
     interpolator.setMesh(mesh.get());
     interpolator.setBasisFunction(basisFunction.get());
-    
-    // initialize triangle centers for each face
-    start = clock();
-    interpolator.calculateTriangleCenters();
-    span = clock() - start;
-    total += span;
-    printf("Computing triangle centers ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
-    
-    // initialize triangle edge centers
-    start = clock();
-    interpolator.calculateEdgeCenters();
-    span = clock() - start;
-    total += span;
-    printf("Computing edge centers ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
 
-    // initialize tetrahedron centers
-    start = clock();
-    interpolator.calculateTetrahedronCenters();
-    span = clock() - start;
-    total += span;
-    printf("Computing tetrahedron centers ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
+//    // initialize triangle centers for each face
+//    start = clock();
+//    interpolator.calculateTriangleCenters();
+//    span = clock() - start;
+//    total += span;
+//    printf("Computing triangle centers ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
+//
+//    // initialize triangle edge centers
+//    start = clock();
+//    interpolator.calculateEdgeCenters();
+//    span = clock() - start;
+//    total += span;
+//    printf("Computing edge centers ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
+//
+//    // initialize tetrahedron centers
+//    start = clock();
+//    interpolator.calculateTetrahedronCenters();
+//    span = clock() - start;
+//    total += span;
+//    printf("Computing tetrahedron centers ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
     
 	// find neighboring vertices for each vertex and
     // neighboring faces for each face (center)
@@ -143,11 +143,11 @@ int main(int argc, const char **argv) {
     }
     
     // compute metrics
-    start = clock();
-    interpolator.computeTetrahedronMetrics();
-    span = clock() - start;
-    total += span;
-    printf("Computing tetrahedron metrics ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
+//    start = clock();
+//    interpolator.computeTetrahedronMetrics();
+//    span = clock() - start;
+//    total += span;
+//    printf("Computing tetrahedron metrics ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
 
     // solve coefficients
     start = clock();
