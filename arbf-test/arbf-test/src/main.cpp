@@ -62,6 +62,7 @@ int main(int argc, const char **argv) {
     Config::problemDim = runConfigs.get("problem_dim", 2).asInt();
     Config::numEvalPoints = runConfigs.get("evaluation_points", 1000).asUInt();
     Config::isDebugEnabled = runConfigs.get("enable_debug", false).asBool();
+    Config::setInterpolationScheme(runConfigs.get("interpolation_scheme", "global").asString());
 
     constants = root["constants"] ;
     Config::epsilon = constants.get("EPSILON", 1e-3).asDouble();
@@ -148,16 +149,6 @@ int main(int argc, const char **argv) {
 //    span = clock() - start;
 //    total += span;
 //    printf("Computing tetrahedron metrics ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
-
-    // solve coefficients
-    start = clock();
-    if (Config::problemDim == 2) {
-        interpolator.solveDistanceMatrix2d();
-    } else {
-        interpolator.solveDistanceMatrix3d();
-    }
-    span = clock() - start;
-    printf("Solving coefficients ... %lf ms.\n", (double) span * 1e3 / CLOCKS_PER_SEC);
 
     // interpolate
     start = clock();

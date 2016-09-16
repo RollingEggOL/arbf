@@ -20,7 +20,6 @@
 #include "Mesh.h"
 #include "BasisFunction.h"
 
-
 class ARBFInterpolator {
 public:
     typedef std::array<double, 2> Eigenvalues2d;
@@ -38,26 +37,21 @@ public:
     ARBFInterpolator();
     virtual ~ARBFInterpolator();
 
-//    const std::vector<Vertex>& getTriangleCenters() const;
-//    const std::vector<Vertex>& getEdgeCenters() const;
-//    const std::vector<Vertex>& getTetrahedronCenters() const;
     InterpolateResult getResult() const;
     void setMesh(Mesh *mesh);
     void setBasisFunction(BasisFunction *basisFunction);
-    void solveDistanceMatrix2d();
-    void solveDistanceMatrix3d();
-//    void calculateTriangleCenters();
-//    void calculateEdgeCenters();
-//    void calculateTetrahedronCenters();
     void computeEdgeMetrics();
     void computeTetrahedronMetrics();
     void interpolate(unsigned numEvalPoints);
+    void interpolate_local(unsigned numEvalPoints);
 
 private:
     Eigens2d computeEigens(const Eigen::Matrix2d &matrix);
     Eigens3d computeEigens(const Eigen::Matrix3d &matrix);
     void rescaleEigenvalues(Eigenvalues2d &values); // for 2D
     void rescaleEigenvalues(Eigenvalues3d &values); // for 3D
+    InterpolateResult m_interpolate3d_global(unsigned numEvalPoints);
+    InterpolateResult m_interpolate2d_global(unsigned numEvalPoints);
     bool m_isInTriangle(const double *x, int ta, int tb, int tc);
     bool m_isInTetrahedron(const double *x, int tetrahedronId);
     bool m_isInAnyTetrahedron(const double *x); // check if a point x is in any tetrahedron
@@ -76,9 +70,6 @@ private:
     double m_computeRMSE(const PPMImage &img1, const PPMImage &img2);
 
 private:
-//    std::vector<Vertex> m_centers; // triangle centers
-//    std::vector<Vertex> m_edgeCenters; // triangle edge centers
-//    std::vector<Vertex> m_tetrahedronCenters; // tetrahedron centers
     Mesh *m_mesh = nullptr; // Mesh
     BasisFunction *m_basis; // basis function
     std::vector<Eigen::Matrix3d> m_edgeT; // edge metric tensor
@@ -87,7 +78,6 @@ private:
     Eigen::VectorXd m_u; // u in Ax = u
     Eigen::VectorXd m_coeff; // x in Ax = u
     InterpolateResult m_result;
-    bool m_hasCoeffSolved;
 };
 
 #endif /* defined(__arbf_test_ARBFInterpolator__) */
