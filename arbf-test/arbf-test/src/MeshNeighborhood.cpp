@@ -20,8 +20,8 @@ void OneRingMeshNeighborhood::computeVertexNeighbors(const Mesh *mesh) {
     m_vf_1ring.resize(mesh->getNumVertices());
 
     // build 1-ring VERTEX <-> FACE mapping
-    auto faces = mesh->getFacesAsList();
-    for (int f = 0; f < mesh->getNumFaces(); ++f) {
+    auto faces = mesh->getTriangleFacesAsList();
+    for (int f = 0; f < mesh->getNumTriangleFaces(); ++f) {
         m_vf_1ring[faces[f].a].push_back(f);
         m_vf_1ring[faces[f].b].push_back(f);
         m_vf_1ring[faces[f].c].push_back(f);
@@ -76,10 +76,10 @@ void OneRingMeshNeighborhood::computeVertexNeighbors(const Mesh *mesh) {
 }
 
 void OneRingMeshNeighborhood::computeFaceNeighbors(const Mesh *mesh) {
-    m_ff_1ring.resize(mesh->getNumFaces());
-    auto faces = mesh->getFacesAsList();
+    m_ff_1ring.resize(mesh->getNumTriangleFaces());
+    auto faces = mesh->getTriangleFacesAsList();
 
-    for (int f = 0; f < mesh->getNumFaces(); ++f) {
+    for (int f = 0; f < mesh->getNumTriangleFaces(); ++f) {
         int a = faces[f].a;
         int b = faces[f].b;
         int c = faces[f].c;
@@ -153,11 +153,11 @@ void TwoRingMeshNeighborhood::computeVertexNeighbors(const Mesh *mesh) {
 
     m_vv_2ring.resize(mesh->getNumVertices());
     m_vf_2ring.resize(mesh->getNumVertices());
-    auto faces = mesh->getFacesAsList();
+    auto faces = mesh->getTriangleFacesAsList();
 
     // build 2-ring VERTEX <-> FACE mapping
     m_vf_2ring = m_vf_1ring;
-    for (int i = 0; i < mesh->getNumFaces(); ++i) {
+    for (int i = 0; i < mesh->getNumTriangleFaces(); ++i) {
         // 3 vertices of current face
         int a = faces[i].a;
         int b = faces[i].b;
@@ -253,10 +253,10 @@ void TwoRingMeshNeighborhood::computeFaceNeighbors(const Mesh *mesh) {
         exit(EXIT_FAILURE);
     }
 
-    m_ff_2ring.resize(mesh->getNumFaces());
-    auto faces = mesh->getFacesAsList();
+    m_ff_2ring.resize(mesh->getNumTriangleFaces());
+    auto faces = mesh->getTriangleFacesAsList();
 
-    for (int f = 0; f < mesh->getNumFaces(); ++f) {
+    for (int f = 0; f < mesh->getNumTriangleFaces(); ++f) {
         int a = faces[f].a;
         int b = faces[f].b;
         int c = faces[f].c;

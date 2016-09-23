@@ -13,7 +13,7 @@
 #include "../include/Common.h"
 #include "../include/Mesh.h"
 
-Mesh::Mesh(): m_nv(0), m_nf(0), m_ne(0),
+Mesh::Mesh(): m_nv(0), m_nft(0), m_nfq(0), m_ne(0),
               m_minX(std::numeric_limits<double>::max()), m_maxX(std::numeric_limits<double>::lowest()),
               m_minY(std::numeric_limits<double>::max()), m_maxY(std::numeric_limits<double>::lowest()),
               m_minZ(std::numeric_limits<double>::max()), m_maxZ(std::numeric_limits<double>::lowest()) {
@@ -22,10 +22,11 @@ Mesh::Mesh(): m_nv(0), m_nf(0), m_ne(0),
 
 Mesh::Mesh(const Mesh &other) {
     m_vertices = other.m_vertices;
-    m_faces = other.m_faces;
+    m_triangleFaces = other.m_triangleFaces;
     m_edges = other.m_edges;
     m_nv = other.m_nv;
-    m_nf = other.m_nf;
+    m_nft = other.m_nft;
+    m_nfq = other.m_nfq;
     m_ne = other.m_ne;
     m_minX = other.m_minX;
     m_maxX = other.m_maxX;
@@ -45,10 +46,11 @@ Mesh &Mesh::operator=(const Mesh &other) {
     }
 
     m_vertices = other.m_vertices;
-    m_faces = other.m_faces;
+    m_triangleFaces = other.m_triangleFaces;
     m_edges = other.m_edges;
     m_nv = other.m_nv;
-    m_nf = other.m_nf;
+    m_nft = other.m_nft;
+    m_nfq = other.m_nfq;
     m_ne = other.m_ne;
     m_minX = other.m_minX;
     m_maxX = other.m_maxX;
@@ -63,8 +65,12 @@ unsigned Mesh::getNumVertices() const {
     return m_nv;
 }
 
-unsigned Mesh::getNumFaces() const {
-    return m_nf;
+unsigned Mesh::getNumTriangleFaces() const {
+    return m_nft;
+}
+
+unsigned Mesh::getNumQuadrangleFaces() const {
+    return m_nfq;
 }
 
 unsigned Mesh::getNumEdges() const {
@@ -75,12 +81,20 @@ const std::vector<Vertex> &Mesh::getVertices() const {
     return m_vertices;
 }
 
-const std::unordered_set<Face> &Mesh::getFaces() const {
-    return m_faces;
+const std::unordered_set<TriangleFace> &Mesh::getTriangleFaces() const {
+    return m_triangleFaces;
 }
 
-const std::vector<Face> Mesh::getFacesAsList() const {
-    return std::vector<Face>(m_faces.begin(), m_faces.end());
+const std::vector<TriangleFace> Mesh::getTriangleFacesAsList() const {
+    return std::vector<TriangleFace>(m_triangleFaces.begin(), m_triangleFaces.end());
+}
+
+const std::unordered_set<QuadrangleFace> &Mesh::getQuadrangleFaces() const {
+    return m_quadrangleFaces;
+}
+
+const std::vector<QuadrangleFace> Mesh::getQuadrangleFacesAsList() const {
+    return std::vector<QuadrangleFace>(m_quadrangleFaces.begin(), m_quadrangleFaces.end());
 }
 
 const std::unordered_set<Edge> &Mesh::getEdges() const {
@@ -131,8 +145,12 @@ void Mesh::setNumVertices(unsigned value) {
     m_nv = value;
 }
 
-void Mesh::setNumFaces(unsigned value) {
-    m_nf = value;
+void Mesh::setNumTriangleFaces(unsigned value) {
+    m_nft = value;
+}
+
+void Mesh::setNumQuadrangleFaces(unsigned value) {
+    m_nfq = value;
 }
 
 void Mesh::setNumEdges(unsigned value) {
@@ -182,8 +200,12 @@ void Mesh::addVertex(const Vertex &vertex) {
     m_vertices.push_back(vertex);
 }
 
-void Mesh::addFace(const Face &face) {
-    m_faces.insert(face);
+void Mesh::addTriangleFace(const TriangleFace &face) {
+    m_triangleFaces.insert(face);
+}
+
+void Mesh::addQuadrangleFace(const QuadrangleFace &face) {
+    m_quadrangleFaces.insert(face);
 }
 
 void Mesh::addEdge(const Edge &edge) {
@@ -191,5 +213,5 @@ void Mesh::addEdge(const Edge &edge) {
 }
 
 void Mesh::exportToFile(const char *filename) {
-    throw new std::logic_error("Not implemented.");
+    throw new NotImplementedException();
 }

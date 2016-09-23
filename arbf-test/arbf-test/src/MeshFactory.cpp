@@ -57,7 +57,7 @@ unique_ptr<Mesh> TriMeshFactory::createMeshFromFile(const char* filename) {
 
     fscanf(fin, "%d %d %d\n", &a, &b, &c); // # of vertices, # of faces, # of edges
     mesh->setNumVertices(a);
-    mesh->setNumFaces(b);
+    mesh->setNumTriangleFaces(b);
     mesh->setNumEdges(c);
 
     // read vertices
@@ -97,15 +97,15 @@ unique_ptr<Mesh> TriMeshFactory::createMeshFromFile(const char* filename) {
     }
 
     // read faces
-    for (int f = 0; f < mesh->getNumFaces(); f++) {
+    for (int f = 0; f < mesh->getNumTriangleFaces(); f++) {
         fscanf(fin,"%d %d %d %d\n",&a, &b, &c, &d);
         assert(a == 3);
-        Face face(b, c, d, -1.0);
+        TriangleFace face(b, c, d, -1.0);
         const Vertex *v0 = &mesh->getVertices()[face.a];
         const Vertex *v1 = &mesh->getVertices()[face.b];
         const Vertex *v2 = &mesh->getVertices()[face.c];
         face.computeCenter(*v0, *v1, *v2);
-        mesh->addFace(face);
+        mesh->addTriangleFace(face);
 
         Edge e1(face.a, face.b, -1.0);
         Edge e2(face.b, face.c, -1.0);
@@ -202,7 +202,7 @@ unique_ptr<Mesh> TetMeshFactory::createMeshFromFile(const char *filename) {
     }
 
     // read tetrahedrons
-    std::unordered_set<Face> set;
+    std::unordered_set<TriangleFace> set;
     for (int t = 0; t < mesh->getNumTetrahedrons(); t++) {
         fscanf(fin,"4 %d %d %d %d\n",&a, &b, &c, &d);
         Tetrahedron tet(a, b, c, d, -1.0);
@@ -275,10 +275,10 @@ unique_ptr<Mesh> TetMeshFactory::createMeshFromFile(const char *filename) {
     }
 
     for (auto &f: set) {
-        mesh->addFace(f);
+        mesh->addTriangleFace(f);
     }
 
-    mesh->setNumFaces(mesh->getFaces().size());
+    mesh->setNumTriangleFaces(mesh->getTriangleFaces().size());
     mesh->setNumEdges(mesh->getEdges().size());
     fclose(fin);
     return unique_ptr<Mesh>(mesh);

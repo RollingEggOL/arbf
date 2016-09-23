@@ -23,11 +23,14 @@ public:
 
     Mesh &operator=(const Mesh &other);
     unsigned getNumVertices() const;
-    unsigned getNumFaces() const;
+    unsigned getNumTriangleFaces() const;
+    unsigned getNumQuadrangleFaces() const;
     unsigned getNumEdges() const;
     const std::vector<Vertex> &getVertices() const;
-    const std::unordered_set<Face> &getFaces() const;
-    const std::vector<Face> getFacesAsList() const;
+    const std::unordered_set<TriangleFace> &getTriangleFaces() const;
+    const std::vector<TriangleFace> getTriangleFacesAsList() const;
+    const std::unordered_set<QuadrangleFace> &getQuadrangleFaces() const;
+    const std::vector<QuadrangleFace> getQuadrangleFacesAsList() const;
     const std::unordered_set<Edge> &getEdges() const;
     const std::vector<Edge> getEdgesAsList() const;
     double getMinX() const;
@@ -40,7 +43,8 @@ public:
     std::array<double, 2> getMinMaxY() const;
     std::array<double, 2> getMinMaxZ() const;
     void setNumVertices(unsigned value);
-    void setNumFaces(unsigned value);
+    void setNumTriangleFaces(unsigned value);
+    void setNumQuadrangleFaces(unsigned value);
     void setNumEdges(unsigned value);
     void setMinX(double value);
     void setMaxX(double value);
@@ -52,15 +56,18 @@ public:
     void setMinMaxY(const std::array<double, 2> &value);
     void setMinMaxZ(const std::array<double, 2> &value);
     void addVertex(const Vertex &vertex);
-    void addFace(const Face &face);
+    void addTriangleFace(const TriangleFace &face);
+    void addQuadrangleFace(const QuadrangleFace &face);
     void addEdge(const Edge &edge);
 
 protected:
     std::vector<Vertex> m_vertices; // vertices
-    std::unordered_set<Face> m_faces; // faces
+    std::unordered_set<TriangleFace> m_triangleFaces; // triangle faces
+    std::unordered_set<QuadrangleFace> m_quadrangleFaces; // quadrangle faces
     std::unordered_set<Edge> m_edges; // edges
     unsigned m_nv; // # of vertices
-    unsigned m_nf; // # of faces
+    unsigned m_nft; // # of triangle faces
+    unsigned m_nfq; // # of quadrangle faces
     unsigned m_ne; // # of edges
     double m_minX; // minimum x coord
     double m_maxX; // maximum x coord

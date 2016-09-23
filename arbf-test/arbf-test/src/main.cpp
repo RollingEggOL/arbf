@@ -89,7 +89,7 @@ int main(int argc, const char **argv) {
 //    boundingBoxFactory.setMeshFactory(std::move(meshFactory));
     unique_ptr<Mesh> mesh = meshFactory->createMeshFromFile(file_path.c_str());
 //    unique_ptr<Mesh> mesh = boundingBoxFactory.createMeshFromFile(file_path.c_str());
-    printf("\tnv = %d, nf = %d\n", mesh->getNumVertices(), mesh->getNumFaces());
+    printf("\tnv = %d, nf = %d\n", mesh->getNumVertices(), mesh->getNumTriangleFaces());
     unique_ptr<BasisFunction> basisFunction(new MQBasisFunction);
     span = clock() - start;total += span;
     printf("Reading mesh ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
@@ -152,7 +152,11 @@ int main(int argc, const char **argv) {
 
     // interpolate
     start = clock();
-    interpolator.interpolate(Config::numEvalPoints);
+    if (Config::interpolationScheme == Config::InterpolationSchemes::local) {
+        interpolator.interpolate_local(Config::numEvalPoints);
+    } else {
+        interpolator.interpolate_global(Config::numEvalPoints);
+    }
     ARBFInterpolator::InterpolateResult result = interpolator.getResult();
     span = clock() - start;
     total += span;
@@ -169,8 +173,8 @@ int main(int argc, const char **argv) {
         output->write();
     } else {
         unsigned dim[] = { static_cast<unsigned>(get<2>(result)[0]),
-                      static_cast<unsigned>(get<2>(result)[1]),
-                      static_cast<unsigned>(get<2>(result)[2]) };
+                           static_cast<unsigned>(get<2>(result)[1]),
+                           static_cast<unsigned>(get<2>(result)[2]) };
         float mins[] = { (float) mesh->getMinX(), (float) mesh->getMinY(), (float) mesh->getMinZ() };
         float maxs[] = { (float) mesh->getMaxX(), (float) mesh->getMaxY(), (float) mesh->getMaxZ() };
         RawivImage* output = new RawivImage(dim, mins, maxs);

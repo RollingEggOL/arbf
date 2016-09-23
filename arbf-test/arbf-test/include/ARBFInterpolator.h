@@ -42,7 +42,7 @@ public:
     void setBasisFunction(BasisFunction *basisFunction);
     void computeEdgeMetrics();
     void computeTetrahedronMetrics();
-    void interpolate(unsigned numEvalPoints);
+    void interpolate_global(unsigned numEvalPoints);
     void interpolate_local(unsigned numEvalPoints);
 
 private:
@@ -52,6 +52,8 @@ private:
     void rescaleEigenvalues(Eigenvalues3d &values); // for 3D
     InterpolateResult m_interpolate3d_global(unsigned numEvalPoints);
     InterpolateResult m_interpolate2d_global(unsigned numEvalPoints);
+    InterpolateResult m_interpolate3d_local(unsigned numEvalPoints);
+    InterpolateResult m_interpolate2d_local(unsigned numEvalPoints);
     bool m_isInTriangle(const double *x, int ta, int tb, int tc);
     bool m_isInTetrahedron(const double *x, int tetrahedronId);
     bool m_isInAnyTetrahedron(const double *x); // check if a point x is in any tetrahedron

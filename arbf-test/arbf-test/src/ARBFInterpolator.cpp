@@ -22,6 +22,7 @@
 #include "../include/TriMesh.h"
 #include "../include/TetMesh.h"
 #include "../include/ARBFInterpolator.h"
+#include "../include/MeshNeighborhood.h"
 
 ARBFInterpolator::ARBFInterpolator(): m_basis(nullptr) {}
 
@@ -135,16 +136,12 @@ inline double ARBFInterpolator::m_computeWeight(double r) {
     return exp(-SQ(r) / SQ(30.0));
 }
 
-void ARBFInterpolator::interpolate_local(unsigned numEvalPoints) {
-
-}
-
 ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolate2d_global(unsigned numEvalPoints) {
     // solve coefficients
     unsigned nv = m_mesh->getNumVertices();
-    unsigned nf = m_mesh->getNumFaces();
+    unsigned nf = m_mesh->getNumTriangleFaces();
     unsigned ne = m_mesh->getNumEdges();
-    auto faces = m_mesh->getFacesAsList();
+    auto faces = m_mesh->getTriangleFacesAsList();
     auto edges = m_mesh->getEdgesAsList();
     unsigned dim = nv + nf + ne;
 
@@ -231,13 +228,13 @@ ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolate3d_global(uns
     // solve coefficients
     TetMesh *mesh = dynamic_cast<TetMesh *>(m_mesh);
     unsigned nv = mesh->getNumVertices();
-    unsigned nf = mesh->getNumFaces();
+    unsigned nf = mesh->getNumTriangleFaces();
     unsigned nt = mesh->getNumTetrahedrons();
     unsigned rows = nv + nf + nt + (nt * 4);
     unsigned cols = rows;
     m_distanceMatrix.resize(rows, cols);
     m_u.resize(rows);
-    auto faces = mesh->getFacesAsList();
+    auto faces = mesh->getTriangleFacesAsList();
     double c1 = 0.1;
     double p0[] = {0, 0, 0}, p1[] = {0, 0, 0};
     double v0[3], v1[3], v2[3], v3[3], v4[3], w0[3], w1[3], w2[3], w3[3], w4[3];
@@ -511,13 +508,343 @@ ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolate3d_global(uns
     return InterpolateResult(intensities, 255.0, { dimX, dimY, dimZ });
 }
 
-void ARBFInterpolator::interpolate(unsigned numEvalPoints) {
+void ARBFInterpolator::interpolate_global(unsigned numEvalPoints) {
     switch (Config::problemDim) {
         case 2:
             m_result = m_interpolate2d_global(numEvalPoints);
+            break;
         case 3:
         default:
             m_result = m_interpolate3d_global(numEvalPoints);
+            break;
+    }
+
+    rescaleResultData(0, 255);
+    thresholdResultData(std::get<1>(m_result));
+}
+
+//ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolate3d_local(unsigned numEvalPoints) {
+//    TetMesh *mesh = dynamic_cast<TetMesh *>(m_mesh);
+//    double p0[] = {0, 0, 0}, p1[] = {0, 0, 0};
+//    unsigned dimX = (unsigned) std::round(std::pow(numEvalPoints, 1.0 / 3.0));
+//    unsigned dimY = (unsigned) std::round(std::pow(numEvalPoints, 1.0 / 3.0));
+//    unsigned dimZ = (unsigned) std::round(std::pow(numEvalPoints, 1.0 / 3.0));
+//    std::vector<double> x = linspace(m_mesh->getMinX(), m_mesh->getMaxX(), dimX);
+//    std::vector<double> y = linspace(m_mesh->getMinY(), m_mesh->getMaxY(), dimY);
+//    std::vector<double> z = linspace(m_mesh->getMinZ(), m_mesh->getMaxZ(), dimZ);
+//    std::vector<double> intensities(numEvalPoints, -1.0); // solution
+//
+//    for (const Tetrahedron &tet: mesh->getTetrahedrons()) {
+//        OneRingMeshNeighborhood neighborhood
+//    }
+//
+//
+//
+//
+//    for (int k = 0; k < dimZ; k++) {
+//        for (int j = 0; j < dimY; j++) {
+//            for (int i = 0; i < dimX; i++) {
+//                p0[0] = x[i], p0[1] = y[j], p0[2] = z[k];
+//                for (int t = 0; t < )
+//
+//
+//
+//                if (!m_isInAnyTetrahedron(p0)) {
+//                    continue;
+//                }
+//
+//                double intensity = 0;
+//                for (int l = 0; l < cols;) {
+//                    if (l < nv) {
+//                        const Vertex &vj = m_mesh->getVertices()[l];
+//                        p1[0] = vj.x;
+//                        p1[1] = vj.y;
+//                        p1[2] = vj.z;
+//                        double r = m_computeDistance(p0, p1);
+//                        intensity += (m_basis->phi(r, c1) * m_coeff(l++));
+//                    } else if (l < (nv + nf)) {
+//                        const Vertex &vj = faces[l - nv].center;
+//                        p1[0] = vj.x;
+//                        p1[1] = vj.y;
+//                        p1[2] = vj.z;
+//                        double r = m_computeDistance(p0, p1);
+//                        intensity += (m_basis->phi(r, c1) * m_coeff(l++));
+//                    } else if (l < (nv + nf + nt)) {
+//                        const Vertex &vj = mesh->getTetrahedrons()[l - nv - nf].center;
+//                        p1[0] = vj.x;
+//                        p1[1] = vj.y;
+//                        p1[2] = vj.z;
+//                        double r = m_computeDistance(p0, p1);
+//                        intensity += (m_basis->phi(r, c1) * m_coeff(l++));
+//                    } else {
+//                        unsigned n = l - nv - nf - nt;
+//                        const Tetrahedron &tj = mesh->getTetrahedrons()[n / 4];
+//                        w0[0] = tj.center.x, w0[1] = tj.center.y, w0[2] = tj.center.z;
+//                        w1[0] = tj.f1.center.x, w1[1] = tj.f1.center.y, w1[2] = tj.f1.center.z;
+//                        w2[0] = tj.f2.center.x, w2[1] = tj.f2.center.y, w2[2] = tj.f2.center.z;
+//                        w3[0] = tj.f3.center.x, w3[1] = tj.f3.center.y, w3[2] = tj.f3.center.z;
+//                        w4[0] = tj.f4.center.x, w4[1] = tj.f4.center.y, w4[2] = tj.f4.center.z;
+//                        double r1 = m_computeDistance(p0, w0, w1);
+//                        double r2 = m_computeDistance(p0, w0, w2);
+//                        double r3 = m_computeDistance(p0, w0, w3);
+//                        double r4 = m_computeDistance(p0, w0, w4);
+//                        intensity += (m_basis->phi(r1, c1) * m_coeff(l++));
+//                        intensity += (m_basis->phi(r2, c1) * m_coeff(l++));
+//                        intensity += (m_basis->phi(r3, c1) * m_coeff(l++));
+//                        intensity += (m_basis->phi(r4, c1) * m_coeff(l++));
+//                    }
+//
+////                            if (l < nv) {
+////                                p1[0] = m_mesh->getVertices()[l].x;
+////                                p1[1] = m_mesh->getVertices()[l].y;
+////                                p1[2] = m_mesh->getVertices()[l].z;
+////                            } else if (l < (nv + nf)) {
+////                                p1[0] = m_centers[l - nv].x;
+////                                p1[1] = m_centers[l - nv].y;
+////                                p1[2] = m_centers[l - nv].z;
+////                            } else {
+////                                p1[0] = m_tetrahedronCenters[l - nv - nf].x;
+////                                p1[1] = m_tetrahedronCenters[l - nv - nf].y;
+////                                p1[2] = m_tetrahedronCenters[l - nv - nf].z;
+////                            }
+//
+////                            double r = m_computeDistance(p0, p1, tensor);
+////                            intensity += (m_basis->phi(r, c1) * m_coeff(l));
+//                }
+//                intensities[k * dimX * dimY + j * dimX + i] = intensity;
+//            }
+//        }
+//    }
+//
+//
+//
+//
+//
+//
+//    // solve coefficients
+//
+//    unsigned nv = mesh->getNumVertices();
+//    unsigned nf = mesh->getNumFaces();
+//    unsigned nt = mesh->getNumTetrahedrons();
+//    unsigned rows = nv + nf + nt + (nt * 4);
+//    unsigned cols = rows;
+//    m_distanceMatrix.resize(rows, cols);
+//    m_u.resize(rows);
+//    auto faces = mesh->getTriangleFacesAsList();
+//    double c1 = 0.1;
+//
+//    double v0[3], v1[3], v2[3], v3[3], v4[3], w0[3], w1[3], w2[3], w3[3], w4[3];
+//
+//    for (unsigned i = 0; i < (nv + nf + nt); i++) {
+//        m_u(i) = -1;
+//
+//        if (i < nv) {
+//            const Vertex &vi = mesh->getVertices()[i];
+//            p0[0] = vi.x;
+//            p0[1] = vi.y;
+//            p0[2] = vi.z;
+//            m_u(i) = vi.intensity;
+//        } else if (i < (nv + nf)) {
+//            const Vertex &vi = faces[i - nv].center;
+//            p0[0] = vi.x;
+//            p0[1] = vi.y;
+//            p0[2] = vi.z;
+//            m_u(i) = vi.intensity;
+//        } else {
+//            const Vertex &vi = mesh->getTetrahedrons()[i - nv - nf].center;
+//            p0[0] = vi.x;
+//            p0[1] = vi.y;
+//            p0[2] = vi.z;
+//            m_u(i) = vi.intensity;
+//        }
+//
+//        for (int j = 0; j < cols;) {
+//            if (j < nv) {
+//                const Vertex &vj = m_mesh->getVertices()[j];
+//                p1[0] = vj.x;
+//                p1[1] = vj.y;
+//                p1[2] = vj.z;
+//                double r = m_computeDistance(p0, p1);
+//                m_distanceMatrix(i, j) = m_basis->phi(r, c1);
+//                j++;
+//            } else if (j < (nv + nf)) {
+//                const Vertex &vj = faces[j - nv].center;
+//                p1[0] = vj.x;
+//                p1[1] = vj.y;
+//                p1[2] = vj.z;
+//                double r = m_computeDistance(p0, p1);
+//                m_distanceMatrix(i, j) = m_basis->phi(r, c1);
+//                j++;
+//            } else if (j < (nv + nf + nt)) {
+//                const Vertex &vj = mesh->getTetrahedrons()[j - nv - nf].center;
+//                p1[0] = vj.x;
+//                p1[1] = vj.y;
+//                p1[2] = vj.z;
+//                double r = m_computeDistance(p0, p1);
+//                m_distanceMatrix(i, j) = m_basis->phi(r, c1);
+//                j++;
+//            } else {
+//                unsigned n = j - nv - nf - nt;
+//                const Tetrahedron &tj = mesh->getTetrahedrons()[n / 4];
+//                w0[0] = tj.center.x, w0[1] = tj.center.y, w0[2] = tj.center.z;
+//                w1[0] = tj.f1.center.x, w1[1] = tj.f1.center.y, w1[2] = tj.f1.center.z;
+//                w2[0] = tj.f2.center.x, w2[1] = tj.f2.center.y, w2[2] = tj.f2.center.z;
+//                w3[0] = tj.f3.center.x, w3[1] = tj.f3.center.y, w3[2] = tj.f3.center.z;
+//                w4[0] = tj.f4.center.x, w4[1] = tj.f4.center.y, w4[2] = tj.f4.center.z;
+//                double r1 = m_computeDistance(p0, w0, w1);
+//                double r2 = m_computeDistance(p0, w0, w2);
+//                double r3 = m_computeDistance(p0, w0, w3);
+//                double r4 = m_computeDistance(p0, w0, w4);
+//                m_distanceMatrix(i, j) = m_basis->phi(r1, c1);
+//                m_distanceMatrix(i, j + 1) = m_basis->phi(r2, c1);
+//                m_distanceMatrix(i, j + 2) = m_basis->phi(r3, c1);
+//                m_distanceMatrix(i, j + 3) = m_basis->phi(r4, c1);
+//                j += 4;
+//            }
+//        }
+//    }
+//
+//    for (unsigned i = (nv + nf + nt); i < rows; i += 4) {
+//        m_u(i) = -1;
+//        m_u(i + 1) = -1;
+//        m_u(i + 2) = -1;
+//        m_u(i + 3) = -1;
+//
+//        unsigned m = i - nv - nf - nt;
+//        const Tetrahedron &ti = mesh->getTetrahedrons()[m / 4];
+//        v0[0] = ti.center.x, v0[1] = ti.center.y, v0[2] = ti.center.z;
+//        v1[0] = ti.f1.center.x, v1[1] = ti.f1.center.y, v1[2] = ti.f1.center.z;
+//        v2[0] = ti.f2.center.x, v2[1] = ti.f2.center.y, v2[2] = ti.f2.center.z;
+//        v3[0] = ti.f3.center.x, v3[1] = ti.f3.center.y, v3[2] = ti.f3.center.z;
+//        v4[0] = ti.f4.center.x, v4[1] = ti.f4.center.y, v4[2] = ti.f4.center.z;
+//
+//        for (int j = 0; j < cols;) {
+//            if (j < nv) {
+//                const Vertex &vj = m_mesh->getVertices()[j];
+//                p1[0] = vj.x;
+//                p1[1] = vj.y;
+//                p1[2] = vj.z;
+//                double r1 = m_computeDistance(p1, v0, v1);
+//                double r2 = m_computeDistance(p1, v0, v2);
+//                double r3 = m_computeDistance(p1, v0, v3);
+//                double r4 = m_computeDistance(p1, v0, v4);
+//                m_distanceMatrix(i, j) = m_basis->phi(r1, c1);
+//                m_distanceMatrix(i + 1, j) = m_basis->phi(r2, c1);
+//                m_distanceMatrix(i + 2, j) = m_basis->phi(r3, c1);
+//                m_distanceMatrix(i + 3, j) = m_basis->phi(r4, c1);
+//                j++;
+//            } else if (j < (nv + nf)) {
+//                const Vertex &vj = faces[j - nv].center;
+//                p1[0] = vj.x;
+//                p1[1] = vj.y;
+//                p1[2] = vj.z;
+//                double r1 = m_computeDistance(p1, v0, v1);
+//                double r2 = m_computeDistance(p1, v0, v2);
+//                double r3 = m_computeDistance(p1, v0, v3);
+//                double r4 = m_computeDistance(p1, v0, v4);
+//                m_distanceMatrix(i, j) = m_basis->phi(r1, c1);
+//                m_distanceMatrix(i + 1, j) = m_basis->phi(r2, c1);
+//                m_distanceMatrix(i + 2, j) = m_basis->phi(r3, c1);
+//                m_distanceMatrix(i + 3, j) = m_basis->phi(r4, c1);
+//                j++;
+//            } else if (j < (nv + nf + nt)) {
+//                const Vertex &vj = mesh->getTetrahedrons()[j - nv - nf].center;
+//                p1[0] = vj.x;
+//                p1[1] = vj.y;
+//                p1[2] = vj.z;
+//                double r1 = m_computeDistance(p1, v0, v1);
+//                double r2 = m_computeDistance(p1, v0, v2);
+//                double r3 = m_computeDistance(p1, v0, v3);
+//                double r4 = m_computeDistance(p1, v0, v4);
+//                m_distanceMatrix(i, j) = m_basis->phi(r1, c1);
+//                m_distanceMatrix(i + 1, j) = m_basis->phi(r2, c1);
+//                m_distanceMatrix(i + 2, j) = m_basis->phi(r3, c1);
+//                m_distanceMatrix(i + 3, j) = m_basis->phi(r4, c1);
+//                j++;
+//            } else {
+//                unsigned n = j - nv - nf - nt;
+//                const Tetrahedron &tj = mesh->getTetrahedrons()[n / 4];
+//                double r1, r2, r3, r4;
+//                w0[0] = tj.center.x, w0[1] = tj.center.y, w0[2] = tj.center.z;
+//                w1[0] = tj.f1.center.x, w1[1] = tj.f1.center.y, w1[2] = tj.f1.center.z;
+//                w2[0] = tj.f2.center.x, w2[1] = tj.f2.center.y, w2[2] = tj.f2.center.z;
+//                w3[0] = tj.f3.center.x, w3[1] = tj.f3.center.y, w3[2] = tj.f3.center.z;
+//                w4[0] = tj.f4.center.x, w4[1] = tj.f4.center.y, w4[2] = tj.f4.center.z;
+//
+//                r1 = m_computeDistance(v0, v1, w0, w1);
+//                r2 = m_computeDistance(v0, v1, w0, w2);
+//                r3 = m_computeDistance(v0, v1, w0, w3);
+//                r4 = m_computeDistance(v0, v1, w0, w4);
+//                m_distanceMatrix(i, j) = m_basis->phi(r1, c1);
+//                m_distanceMatrix(i, j + 1) = m_basis->phi(r2, c1);
+//                m_distanceMatrix(i, j + 2) = m_basis->phi(r3, c1);
+//                m_distanceMatrix(i, j + 3) = m_basis->phi(r4, c1);
+//
+//                r1 = m_computeDistance(v0, v2, w0, w1);
+//                r2 = m_computeDistance(v0, v2, w0, w2);
+//                r3 = m_computeDistance(v0, v2, w0, w3);
+//                r4 = m_computeDistance(v0, v2, w0, w4);
+//                m_distanceMatrix(i + 1, j) = m_basis->phi(r1, c1);
+//                m_distanceMatrix(i + 1, j + 1) = m_basis->phi(r2, c1);
+//                m_distanceMatrix(i + 1, j + 2) = m_basis->phi(r3, c1);
+//                m_distanceMatrix(i + 1, j + 3) = m_basis->phi(r4, c1);
+//
+//                r1 = m_computeDistance(v0, v3, w0, w1);
+//                r2 = m_computeDistance(v0, v3, w0, w2);
+//                r3 = m_computeDistance(v0, v3, w0, w3);
+//                r4 = m_computeDistance(v0, v3, w0, w4);
+//                m_distanceMatrix(i + 2, j) = m_basis->phi(r1, c1);
+//                m_distanceMatrix(i + 2, j + 1) = m_basis->phi(r2, c1);
+//                m_distanceMatrix(i + 2, j + 2) = m_basis->phi(r3, c1);
+//                m_distanceMatrix(i + 2, j + 3) = m_basis->phi(r4, c1);
+//
+//                r1 = m_computeDistance(v0, v4, w0, w1);
+//                r2 = m_computeDistance(v0, v4, w0, w2);
+//                r3 = m_computeDistance(v0, v4, w0, w3);
+//                r4 = m_computeDistance(v0, v4, w0, w4);
+//                m_distanceMatrix(i + 3, j) = m_basis->phi(r1, c1);
+//                m_distanceMatrix(i + 3, j + 1) = m_basis->phi(r2, c1);
+//                m_distanceMatrix(i + 3, j + 2) = m_basis->phi(r3, c1);
+//                m_distanceMatrix(i + 3, j + 3) = m_basis->phi(r4, c1);
+//
+//                j += 4;
+//            }
+//        }
+//    }
+//
+//    m_coeff = m_distanceMatrix.fullPivLu().solve(m_u); // call Eigen library to solve
+//
+//    // interpolate
+//
+//
+//    //    cout << "\nx = ";
+//    //    copy(x.begin(), x.end(), ostream_iterator<double>(cout, ", "));
+//    //    cout << "\ny = ";
+//    //    copy(y.begin(), y.end(), ostream_iterator<double>(cout, ", "));
+//    //    cout << "\nz = ";
+//    //    copy(z.begin(), z.end(), ostream_iterator<double>(cout, ", "));
+//
+//
+//
+//    return InterpolateResult(intensities, 255.0, { dimX, dimY, dimZ });
+//}
+ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolate2d_local(unsigned numEvalPoints) {
+    return InterpolateResult();
+}
+
+ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolate3d_local(unsigned numEvalPoints) {
+    return InterpolateResult();
+}
+
+void ARBFInterpolator::interpolate_local(unsigned numEvalPoints) {
+    switch (Config::problemDim) {
+        case 2:
+            m_result = m_interpolate2d_local(numEvalPoints);
+            break;
+        case 3:
+        default:
+            m_result = m_interpolate3d_local(numEvalPoints);
+            break;
     }
 
     rescaleResultData(0, 255);

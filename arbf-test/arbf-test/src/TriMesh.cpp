@@ -37,14 +37,14 @@ void TriMesh::exportToFile(const char *filename) {
     }
 
     fputs("OFF\n", fout);
-    fprintf(fout, "%d %d %d\n", m_nv, m_nf, m_ne);
+    fprintf(fout, "%d %d %d\n", m_nv, m_nft, m_ne);
 
     for (int v = 0; v < m_nv; v++) {
         fprintf(fout, "%lf %lf %lf\n", m_vertices[v].x, m_vertices[v].y, m_vertices[v].z);
     }
 
-    auto faces = getFacesAsList();
-    for (int f = 0; f < m_nf; f++) {
+    auto faces = getTriangleFacesAsList();
+    for (int f = 0; f < m_nft; f++) {
         fprintf(fout, "3 %d %d %d\n", faces[f].a, faces[f].b, faces[f].c);
     }
 

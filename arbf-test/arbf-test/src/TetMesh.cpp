@@ -61,7 +61,7 @@ void TetMesh::exportToFile(const char *filename) {
     }
 
     fputs("TET\n", fout);
-    fprintf(fout, "%d %d %d\n", m_nv, m_nf, m_ne);
+    fprintf(fout, "%d %d %d\n", m_nv, m_nft, m_ne);
 
     for (int v = 0; v < m_nv; v++) {
         fprintf(fout, "%lf %lf %lf\n", m_vertices[v].x, m_vertices[v].y, m_vertices[v].z);

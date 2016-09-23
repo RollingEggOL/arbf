@@ -14,7 +14,7 @@
 
 int Config::neighborhoodSize = 0;
 //bool Config::isUsingISORBF = false;
-Config::InterpolationSchemes Config::scheme = Config::InterpolationSchemes::global;
+Config::InterpolationSchemes Config::interpolationScheme = Config::InterpolationSchemes::global;
 bool Config::isDebugEnabled = false;
 int Config::problemDim = 2;
 unsigned Config::numEvalPoints = 0;
@@ -31,5 +31,5 @@ void Config::setInterpolationScheme(const std::string &scheme) {
         exit(EXIT_FAILURE);
     }
 
-    Config::scheme = Config::schemeMap[scheme];
+    Config::interpolationScheme = Config::schemeMap[scheme];
 }

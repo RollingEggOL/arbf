@@ -13,6 +13,7 @@
 #include <cmath>
 #include <array>
 #include <functional>
+#include <stdexcept>
 #include "Config.h"
 
 #define SQ(x) ((x) * (x))
@@ -52,12 +53,12 @@ struct Vertex {
     std::array<double, 3> eigVec3;
 };
 
-struct Face {
-    Face(int a, int b, int c, double intensity=-1.0): a(a), b(b), c(c), intensity(intensity) {
+struct TriangleFace {
+    TriangleFace(int a, int b, int c, double intensity=-1.0): a(a), b(b), c(c), intensity(intensity) {
         // nothing here
     }
 
-    bool operator==(const Face &other) const {
+    bool operator==(const TriangleFace &other) const {
         bool cond1 = (a == other.a) || (a == other.b) || (a == other.c);
         bool cond2 = (b == other.a) || (b == other.b) || (b == other.c);
         bool cond3 = (c == other.a) || (c == other.b) || (c == other.c);
@@ -79,6 +80,37 @@ struct Face {
     int c;
     double intensity;
     Vertex center; // face center
+};
+
+struct QuadrangleFace {
+    QuadrangleFace(int a, int b, int c, int d, double intensity=-1.0): a(a), b(b), c(c), d(d), intensity(intensity) {
+        // nothing here
+    }
+
+    bool operator==(const QuadrangleFace &other) const {
+        bool cond1 = (a == other.a) || (a == other.b) || (a == other.c) || (a == other.d);
+        bool cond2 = (b == other.a) || (b == other.b) || (b == other.c) || (b == other.d);
+        bool cond3 = (c == other.a) || (c == other.b) || (c == other.c) || (c == other.d);
+        bool cond4 = (d == other.a) || (d == other.b) || (d == other.c) || (d == other.d);
+        return cond1 && cond2 && cond3 && cond4;
+    }
+
+    void computeCenter(const Vertex &v0, const Vertex &v1, const Vertex &v2, const Vertex &v3) {
+        double x = (v0.x + v1.x + v2.x + v3.x) / 4.0;
+        double y = (v0.y + v1.y + v2.y + v3.y) / 4.0;
+        double z = (v0.z + v1.z + v2.z + v3.z) / 4.0;
+        center.x = x;
+        center.y = y;
+        center.z = z;
+        center.intensity = -1.0;
+    }
+
+    int a;
+    int b;
+    int c;
+    int d;
+    double intensity;
+    Vertex center; // quadrangle center
 };
 
 struct Edge {
@@ -134,18 +166,43 @@ struct Tetrahedron {
     int b;
     int c;
     int d;
-    Face f1;
-    Face f2;
-    Face f3;
-    Face f4;
+    TriangleFace f1;
+    TriangleFace f2;
+    TriangleFace f3;
+    TriangleFace f4;
+    double intensity;
+    Vertex center;
+};
+
+struct Hexahedron {
+    Hexahedron(int a, int b, int c, int d, int e, int f, int g, int h, double intensity=-1.0):
+        a(a), b(b), c(c), d(d), e(e), f(f), g(g), h(h), intensity(intensity),
+        f1(a, d, c, b), f2(e, f, g, h), f3(a, b, f, e), f4(b, c, g, f), f5(c, d, h, g), f6(a, e, h, d) {
+        // nothing here
+    }
+
+    int a;
+    int b;
+    int c;
+    int d;
+    int e;
+    int f;
+    int g;
+    int h;
+    QuadrangleFace f1;
+    QuadrangleFace f2;
+    QuadrangleFace f3;
+    QuadrangleFace f4;
+    QuadrangleFace f5;
+    QuadrangleFace f6;
     double intensity;
     Vertex center;
 };
 
 namespace std {
     template<>
-    struct hash<Face> {
-        size_t operator()(const Face &f) const {
+    struct hash<TriangleFace> {
+        size_t operator()(const TriangleFace &f) const {
             size_t hash1 = std::hash<int>()(f.a);
             size_t hash2 = std::hash<int>()(f.b) >> 1;
             size_t hash3 = std::hash<int>()(f.c) << 1;
@@ -154,7 +211,18 @@ namespace std {
     };
 
     template<>
-    struct std::hash<Edge> {
+    struct hash<QuadrangleFace> {
+        size_t operator()(const QuadrangleFace &f) const {
+            size_t hash1 = std::hash<int>()(f.a);
+            size_t hash2 = std::hash<int>()(f.b) >> 1;
+            size_t hash3 = std::hash<int>()(f.c) << 1;
+            size_t hash4 = std::hash<int>()(f.d) >> 1;
+            return hash1 ^ hash2 ^ hash3 ^ hash4;
+        }
+    };
+
+    template<>
+    struct hash<Edge> {
         size_t operator()(const Edge &e) const {
             size_t hash1 = std::hash<int>()(e.a);
             size_t hash2 = std::hash<int>()(e.b) >> 1;
@@ -162,5 +230,10 @@ namespace std {
         }
     };
 }
+
+class NotImplementedException: public std::logic_error {
+public:
+    NotImplementedException(): std::logic_error("Error: not implemented.") {}
+};
 
 #endif //ARBF_TEST_COMMON_H

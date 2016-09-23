@@ -13,6 +13,7 @@
 #include <string>
 
 class Config {
+public:
     enum InterpolationSchemes { global, local };
 
 public:
@@ -20,7 +21,7 @@ public:
 
     static int neighborhoodSize;
 //    static bool isUsingISORBF; // if use ISO-RBF for eigenvalues
-    static InterpolationSchemes scheme;
+    static InterpolationSchemes interpolationScheme;
     static bool isDebugEnabled; // if printing out debug info
     static int problemDim; // model dimension
     static unsigned numEvalPoints; // # of evaluation points
