@@ -73,3 +73,15 @@ void TetMesh::exportToFile(const char *filename) {
 
     fclose(fout);
 }
+
+unsigned TetMesh::getNumQuadrangleFaces() const {
+    throw new NotImplementedException();
+}
+
+const std::unordered_set<QuadrangleFace> &TetMesh::getQuadrangleFaces() const {
+    throw new NotImplementedException();
+}
+
+const std::vector<QuadrangleFace> TetMesh::getQuadrangleFacesAsList() const {
+    throw new NotImplementedException();
+}

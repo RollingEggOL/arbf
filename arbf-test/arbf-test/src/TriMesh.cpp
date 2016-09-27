@@ -4,6 +4,9 @@
 
 #include <cstdlib>
 #include <ctime>
+#include <vector>
+#include <unordered_set>
+#include "../include/Common.h"
 #include "../include/TriMesh.h"
 
 TriMesh::TriMesh(): Mesh() {
@@ -49,6 +52,18 @@ void TriMesh::exportToFile(const char *filename) {
     }
 
     fclose(fout);
+}
+
+unsigned TriMesh::getNumQuadrangleFaces() const {
+    throw new NotImplementedException();
+}
+
+const std::unordered_set<QuadrangleFace> &TriMesh::getQuadrangleFaces() const {
+    throw new NotImplementedException();
+}
+
+const std::vector<QuadrangleFace> TriMesh::getQuadrangleFacesAsList() const {
+    throw new NotImplementedException();
 }
 
 void TriMesh::deform() {

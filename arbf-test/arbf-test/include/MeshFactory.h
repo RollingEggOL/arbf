@@ -36,6 +36,15 @@ public:
 };
 
 /*
+ * Concrete factory to create HexMesh.
+ */
+class HexMeshFactory: public MeshFactory {
+public:
+    ~HexMeshFactory();
+    virtual std::unique_ptr<Mesh> createMeshFromFile(const char *filename);
+};
+
+/*
  * Abstract mesh factory decorator.
  */
 class MeshFactoryWithExperimentalFeatures: public MeshFactory {

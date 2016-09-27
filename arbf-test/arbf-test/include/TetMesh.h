@@ -6,6 +6,7 @@
 #define ARBF_TEST_TETMESH_H
 
 #include <vector>
+#include <unordered_set>
 #include "Common.h"
 #include "Mesh.h"
 
@@ -15,11 +16,14 @@ public:
     TetMesh(const TetMesh &other);
     virtual ~TetMesh();
     TetMesh &operator=(const TetMesh &other);
+    virtual unsigned getNumQuadrangleFaces() const;
+    virtual const std::unordered_set<QuadrangleFace> &getQuadrangleFaces() const;
+    virtual const std::vector<QuadrangleFace> getQuadrangleFacesAsList() const;
+    virtual void exportToFile(const char *filename);
     unsigned getNumTetrahedrons() const;
     void setNumTetrahedrons(unsigned value);
     const std::vector<Tetrahedron> &getTetrahedrons() const;
     void addTetrahedron(const Tetrahedron &tetrahedron);
-    virtual void exportToFile(const char *filename);
 
 private:
     std::vector<Tetrahedron> m_tetrahedrons; // tetrahedrons
