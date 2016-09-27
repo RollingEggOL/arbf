@@ -63,6 +63,7 @@ int main(int argc, const char **argv) {
     Config::numEvalPoints = runConfigs.get("evaluation_points", 1000).asUInt();
     Config::isDebugEnabled = runConfigs.get("enable_debug", false).asBool();
     Config::setInterpolationScheme(runConfigs.get("interpolation_scheme", "global").asString());
+    Config::setMeshType(runConfigs.get("mesh_type", "Tetrahedron").asString());
 
     constants = root["constants"] ;
     Config::epsilon = constants.get("EPSILON", 1e-3).asDouble();
@@ -84,12 +85,25 @@ int main(int argc, const char **argv) {
     start = total = clock();
     string file_path = projDir + "/data/" + meshFilename;
 //    unique_ptr<MeshFactory> meshFactory(new TriMeshFactory());
-    unique_ptr<MeshFactory> meshFactory(new TetMeshFactory());
+
+    unique_ptr<MeshFactory> meshFactory(nullptr);
+    unique_ptr<Mesh> mesh(nullptr);
+    switch (Config::meshType) {
+        case Config::MeshType::Tetrahedron:
+            meshFactory = unique_ptr<MeshFactory>(new TetMeshFactory());
+            mesh = meshFactory->createMeshFromFile(file_path.c_str());
+            printf("\tnv = %d, nf = %d\n", mesh->getNumVertices(), mesh->getNumTriangleFaces());
+            break;
+        case Config::MeshType::Hexahedron:
+            meshFactory = unique_ptr<MeshFactory>(new HexMeshFactory());
+            mesh = meshFactory->createMeshFromFile(file_path.c_str());
+            printf("\tnv = %d, nf = %d\n", mesh->getNumVertices(), mesh->getNumQuadrangleFaces());
+            break;
+    }
 //    MeshFactoryWithEnlargedBoundingBox boundingBoxFactory;
 //    boundingBoxFactory.setMeshFactory(std::move(meshFactory));
-    unique_ptr<Mesh> mesh = meshFactory->createMeshFromFile(file_path.c_str());
 //    unique_ptr<Mesh> mesh = boundingBoxFactory.createMeshFromFile(file_path.c_str());
-    printf("\tnv = %d, nf = %d\n", mesh->getNumVertices(), mesh->getNumTriangleFaces());
+
     unique_ptr<BasisFunction> basisFunction(new MQBasisFunction);
     span = clock() - start;total += span;
     printf("Reading mesh ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
@@ -97,50 +111,27 @@ int main(int argc, const char **argv) {
     ARBFInterpolator interpolator;
     interpolator.setMesh(mesh.get());
     interpolator.setBasisFunction(basisFunction.get());
-
-//    // initialize triangle centers for each face
-//    start = clock();
-//    interpolator.calculateTriangleCenters();
-//    span = clock() - start;
-//    total += span;
-//    printf("Computing triangle centers ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
-//
-//    // initialize triangle edge centers
-//    start = clock();
-//    interpolator.calculateEdgeCenters();
-//    span = clock() - start;
-//    total += span;
-//    printf("Computing edge centers ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
-//
-//    // initialize tetrahedron centers
-//    start = clock();
-//    interpolator.calculateTetrahedronCenters();
-//    span = clock() - start;
-//    total += span;
-//    printf("Computing tetrahedron centers ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
     
 	// find neighboring vertices for each vertex and
     // neighboring faces for each face (center)
-    start = clock();
-    unique_ptr<MeshNeighborhood> neighbor1Ring(new OneRingMeshNeighborhood());
-//    interpolator.findNeighVertices1Ring();
-//    interpolator.findNeighFaces1Ring();
-    neighbor1Ring->computeVertexNeighbors(mesh.get());
-    neighbor1Ring->computeFaceNeighbors(mesh.get());
-    span = clock() - start;
-    total += span;
-    printf("Finding 1-ring neighborhood ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
-    
-    if (Config::neighborhoodSize == 2) {
+    if (Config::interpolationScheme == Config::InterpolationSchemes::local) {
         start = clock();
-        unique_ptr<MeshNeighborhood> neighbor2Ring(new TwoRingMeshNeighborhood(move(neighbor1Ring).get()));
-//        interpolator.findNeighVertices2Ring();
-//        interpolator.findNeighFaces2Ring();
-        neighbor2Ring->computeVertexNeighbors(mesh.get());
-        neighbor2Ring->computeFaceNeighbors(mesh.get());
+        unique_ptr<MeshNeighborhood> neighbor1Ring(new OneRingMeshNeighborhood());
+        neighbor1Ring->computeVertexNeighbors(mesh.get());
+        neighbor1Ring->computeFaceNeighbors(mesh.get());
         span = clock() - start;
         total += span;
-        printf("Finding 2-ring neighborhood ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
+        printf("Finding 1-ring neighborhood ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
+
+        if (Config::neighborhoodSize == 2) {
+            start = clock();
+            unique_ptr<MeshNeighborhood> neighbor2Ring(new TwoRingMeshNeighborhood(move(neighbor1Ring).get()));
+            neighbor2Ring->computeVertexNeighbors(mesh.get());
+            neighbor2Ring->computeFaceNeighbors(mesh.get());
+            span = clock() - start;
+            total += span;
+            printf("Finding 2-ring neighborhood ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
+        }
     }
     
     // compute metrics
@@ -148,7 +139,7 @@ int main(int argc, const char **argv) {
 //    interpolator.computeTetrahedronMetrics();
 //    span = clock() - start;
 //    total += span;
-//    printf("Computing tetrahedron metrics ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
+//    printf("Computing tetrahedron metrics ... %lf ms\nr", (double) span * 1e3 / CLOCKS_PER_SEC);
 
     // interpolate
     start = clock();

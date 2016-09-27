@@ -5,11 +5,12 @@
     },
     "run_configs": {
         "project_dir": "/Users/keliu/Projects/arbf/arbf-test/arbf-test",
-        "mesh_filename": "icosahedron.tet",
-        "neighborhood_size": 2,
+        "mesh_filename": "hexahedron.hex",
+        "mesh_type": "Hexahedron",
         "problem_dim": 3,
         "evaluation_points": 2097152,
-        "enable_debug": false,
-        "interpolation_scheme": "global"
+        "interpolation_scheme": "global",
+        "neighborhood_size": 2,
+        "enable_debug": false
     }
 }

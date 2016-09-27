@@ -181,6 +181,37 @@ struct Hexahedron {
         // nothing here
     }
 
+    bool operator==(const Hexahedron &other) const {
+        bool cond1 = (a == other.a) || (a == other.b) || (a == other.c) || (a == other.d) || (a == other.e) ||
+                (a == other.f) || (a == other.g) || (a == other.h);
+        bool cond2 = (b == other.a) || (b == other.b) || (b == other.c) || (b == other.d) || (b == other.e) ||
+                (b == other.f) || (b == other.g) || (b == other.h);
+        bool cond3 = (c == other.a) || (c == other.b) || (c == other.c) || (c == other.d) || (c == other.e) ||
+                (c == other.f) || (c == other.g) || (c == other.h);
+        bool cond4 = (d == other.a) || (d == other.b) || (d == other.c) || (d == other.d) || (d == other.e) ||
+                (d == other.f) || (d == other.g) || (d == other.h);
+        bool cond5 = (e == other.a) || (e == other.b) || (e == other.c) || (e == other.d) || (e == other.e) ||
+                (e == other.f) || (e == other.g) || (e == other.h);
+        bool cond6 = (f == other.a) || (f == other.b) || (f == other.c) || (f == other.d) || (f == other.e) ||
+                (f == other.f) || (f == other.g) || (f == other.h);
+        bool cond7 = (g == other.a) || (g == other.b) || (g == other.c) || (g == other.d) || (g == other.e) ||
+                (g == other.f) || (g == other.g) || (g == other.h);
+        bool cond8 = (h == other.a) || (h == other.b) || (h == other.c) || (h == other.d) || (h == other.e) ||
+                (h == other.f) || (h == other.g) || (h == other.h);
+        return cond1 && cond2 && cond3 && cond4 && cond5 && cond6 && cond7 && cond8;
+    }
+
+    void computeCenter(const Vertex &v0, const Vertex &v1, const Vertex &v2, const Vertex &v3,
+                       const Vertex &v4, const Vertex &v5, const Vertex &v6, const Vertex &v7) {
+        double x = (v0.x + v1.x + v2.x + v3.x + v4.x + v5.x + v6.x + v7.x) / 8.0;
+        double y = (v0.y + v1.y + v2.y + v3.y + v4.y + v5.y + v6.y + v7.y) / 8.0;
+        double z = (v0.z + v1.z + v2.z + v3.z + v4.z + v5.z + v6.z + v7.z) / 8.0;
+        center.x = x;
+        center.y = y;
+        center.z = z;
+        center.intensity = -1.0;
+    }
+
     int a;
     int b;
     int c;
@@ -233,7 +264,9 @@ namespace std {
 
 class NotImplementedException: public std::logic_error {
 public:
-    NotImplementedException(): std::logic_error("Error: not implemented.") {}
+    NotImplementedException(): std::logic_error("Error: not implemented.") {
+        // nothing here
+    }
 };
 
 #endif //ARBF_TEST_COMMON_H
