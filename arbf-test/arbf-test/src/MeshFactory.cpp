@@ -363,7 +363,7 @@ std::unique_ptr<Mesh> HexMeshFactory::createMeshFromFile(const char *filename) {
     }
 
     // read hexahedrons
-    std::unordered_set<QuadrangleFace> set;
+    std::unordered_set<QuadrangleFace> faceSet;
     for (int t = 0; t < mesh->getNumHexahedrons(); t++) {
         fscanf(fin,"8 %d %d %d %d %d %d %d %d\n",&a, &b, &c, &d, &e, &f, &g, &h);
         Hexahedron hex(a, b, c, d, e, f, g, h, -1.0);
@@ -382,42 +382,42 @@ std::unique_ptr<Mesh> HexMeshFactory::createMeshFromFile(const char *filename) {
         v2 = &mesh->getVertices()[hex.f1.c];
         v3 = &mesh->getVertices()[hex.f1.d];
         hex.f1.computeCenter(*v0, *v1, *v2, *v3);
-        set.insert(hex.f1);
+        faceSet.insert(hex.f1);
 
         v0 = &mesh->getVertices()[hex.f2.a];
         v1 = &mesh->getVertices()[hex.f2.b];
         v2 = &mesh->getVertices()[hex.f2.c];
         v3 = &mesh->getVertices()[hex.f2.d];
         hex.f2.computeCenter(*v0, *v1, *v2, *v3);
-        set.insert(hex.f2);
+        faceSet.insert(hex.f2);
 
         v0 = &mesh->getVertices()[hex.f3.a];
         v1 = &mesh->getVertices()[hex.f3.b];
         v2 = &mesh->getVertices()[hex.f3.c];
         v3 = &mesh->getVertices()[hex.f3.d];
         hex.f3.computeCenter(*v0, *v1, *v2, *v3);
-        set.insert(hex.f3);
+        faceSet.insert(hex.f3);
 
         v0 = &mesh->getVertices()[hex.f4.a];
         v1 = &mesh->getVertices()[hex.f4.b];
         v2 = &mesh->getVertices()[hex.f4.c];
         v3 = &mesh->getVertices()[hex.f4.d];
         hex.f4.computeCenter(*v0, *v1, *v2, *v3);
-        set.insert(hex.f4);
+        faceSet.insert(hex.f4);
 
         v0 = &mesh->getVertices()[hex.f5.a];
         v1 = &mesh->getVertices()[hex.f5.b];
         v2 = &mesh->getVertices()[hex.f5.c];
         v3 = &mesh->getVertices()[hex.f5.d];
         hex.f5.computeCenter(*v0, *v1, *v2, *v3);
-        set.insert(hex.f5);
+        faceSet.insert(hex.f5);
 
         v0 = &mesh->getVertices()[hex.f6.a];
         v1 = &mesh->getVertices()[hex.f6.b];
         v2 = &mesh->getVertices()[hex.f6.c];
         v3 = &mesh->getVertices()[hex.f6.d];
         hex.f6.computeCenter(*v0, *v1, *v2, *v3);
-        set.insert(hex.f6);
+        faceSet.insert(hex.f6);
         mesh->addHexahedron(hex);
 
         Edge e1(hex.a, hex.b, -1.0);
@@ -493,7 +493,7 @@ std::unique_ptr<Mesh> HexMeshFactory::createMeshFromFile(const char *filename) {
         mesh->addEdge(e12);
     }
 
-    for (auto &f: set) {
+    for (auto &f: faceSet) {
         mesh->addQuadrangleFace(f);
     }
 

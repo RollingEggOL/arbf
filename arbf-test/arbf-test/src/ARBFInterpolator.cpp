@@ -398,6 +398,7 @@ ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolateHexahedron3dG
                 w3[0] = hj.f3.center.x, w3[1] = hj.f3.center.y, w3[2] = hj.f3.center.z;
                 w4[0] = hj.f4.center.x, w4[1] = hj.f4.center.y, w4[2] = hj.f4.center.z;
                 w5[0] = hj.f5.center.x, w5[1] = hj.f5.center.y, w5[2] = hj.f5.center.z;
+                w6[0] = hj.f6.center.x, w6[1] = hj.f6.center.y, w6[2] = hj.f6.center.z;
 
                 r1 = m_computeDistance(v0, v1, w0, w1);
                 r2 = m_computeDistance(v0, v1, w0, w2);
@@ -492,13 +493,6 @@ ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolateHexahedron3dG
     std::vector<double> y = linspace(m_mesh->getMinY(), m_mesh->getMaxY(), dimY);
     std::vector<double> z = linspace(m_mesh->getMinZ(), m_mesh->getMaxZ(), dimZ);
     std::vector<double> intensities(numEvalPoints, -1.0); // solution
-
-    //    cout << "\nx = ";
-    //    copy(x.begin(), x.end(), ostream_iterator<double>(cout, ", "));
-    //    cout << "\ny = ";
-    //    copy(y.begin(), y.end(), ostream_iterator<double>(cout, ", "));
-    //    cout << "\nz = ";
-    //    copy(z.begin(), z.end(), ostream_iterator<double>(cout, ", "));
 
     for (int k = 0; k < dimZ; k++) {
         for (int j = 0; j < dimY; j++) {
