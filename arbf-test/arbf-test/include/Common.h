@@ -12,6 +12,7 @@
 #include <string>
 #include <cmath>
 #include <array>
+#include <algorithm>
 #include <functional>
 #include <stdexcept>
 #include "Config.h"
@@ -59,10 +60,18 @@ struct TriangleFace {
     }
 
     bool operator==(const TriangleFace &other) const {
-        bool cond1 = (a == other.a) || (a == other.b) || (a == other.c);
-        bool cond2 = (b == other.a) || (b == other.b) || (b == other.c);
-        bool cond3 = (c == other.a) || (c == other.b) || (c == other.c);
-        return cond1 && cond2 && cond3;
+        std::array<int, 3> arr1 = { a, b, c };
+        std::array<int, 3> arr2 = { other.a, other.b, other.c };
+        std::sort(arr1.begin(), arr1.end());
+        std::sort(arr2.begin(), arr2.end());
+
+        for (int i = 0; i < 3; i++) {
+            if (arr1[i] != arr2[i]) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     void computeCenter(const Vertex &v0, const Vertex &v1, const Vertex &v2) {
@@ -88,11 +97,18 @@ struct QuadrangleFace {
     }
 
     bool operator==(const QuadrangleFace &other) const {
-        bool cond1 = (a == other.a) || (a == other.b) || (a == other.c) || (a == other.d);
-        bool cond2 = (b == other.a) || (b == other.b) || (b == other.c) || (b == other.d);
-        bool cond3 = (c == other.a) || (c == other.b) || (c == other.c) || (c == other.d);
-        bool cond4 = (d == other.a) || (d == other.b) || (d == other.c) || (d == other.d);
-        return cond1 && cond2 && cond3 && cond4;
+        std::array<int, 4> arr1 = { a, b, c, d };
+        std::array<int, 4> arr2 = { other.a, other.b, other.c, other.d };
+        std::sort(arr1.begin(), arr1.end());
+        std::sort(arr2.begin(), arr2.end());
+
+        for (int i = 0; i < 4; i++) {
+            if (arr1[i] != arr2[i]) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     void computeCenter(const Vertex &v0, const Vertex &v1, const Vertex &v2, const Vertex &v3) {
@@ -145,11 +161,18 @@ struct Tetrahedron {
     }
 
     bool operator==(const Tetrahedron &other) const {
-        bool cond1 = (a == other.a) || (a == other.b) || (a == other.c) || (a == other.d);
-        bool cond2 = (b == other.a) || (b == other.b) || (b == other.c) || (b == other.d);
-        bool cond3 = (c == other.a) || (c == other.b) || (c == other.c) || (c == other.d);
-        bool cond4 = (d == other.a) || (d == other.b) || (d == other.c) || (d == other.d);
-        return cond1 && cond2 && cond3 && cond4;
+        std::array<int, 4> arr1 = { a, b, c, d };
+        std::array<int, 4> arr2 = { other.a, other.b, other.c, other.d };
+        std::sort(arr1.begin(), arr1.end());
+        std::sort(arr2.begin(), arr2.end());
+
+        for (int i = 0; i < 4; i++) {
+            if (arr1[i] != arr2[i]) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     void computeCenter(const Vertex &v0, const Vertex &v1, const Vertex &v2, const Vertex &v3) {
@@ -182,23 +205,18 @@ struct Hexahedron {
     }
 
     bool operator==(const Hexahedron &other) const {
-        bool cond1 = (a == other.a) || (a == other.b) || (a == other.c) || (a == other.d) || (a == other.e) ||
-                (a == other.f) || (a == other.g) || (a == other.h);
-        bool cond2 = (b == other.a) || (b == other.b) || (b == other.c) || (b == other.d) || (b == other.e) ||
-                (b == other.f) || (b == other.g) || (b == other.h);
-        bool cond3 = (c == other.a) || (c == other.b) || (c == other.c) || (c == other.d) || (c == other.e) ||
-                (c == other.f) || (c == other.g) || (c == other.h);
-        bool cond4 = (d == other.a) || (d == other.b) || (d == other.c) || (d == other.d) || (d == other.e) ||
-                (d == other.f) || (d == other.g) || (d == other.h);
-        bool cond5 = (e == other.a) || (e == other.b) || (e == other.c) || (e == other.d) || (e == other.e) ||
-                (e == other.f) || (e == other.g) || (e == other.h);
-        bool cond6 = (f == other.a) || (f == other.b) || (f == other.c) || (f == other.d) || (f == other.e) ||
-                (f == other.f) || (f == other.g) || (f == other.h);
-        bool cond7 = (g == other.a) || (g == other.b) || (g == other.c) || (g == other.d) || (g == other.e) ||
-                (g == other.f) || (g == other.g) || (g == other.h);
-        bool cond8 = (h == other.a) || (h == other.b) || (h == other.c) || (h == other.d) || (h == other.e) ||
-                (h == other.f) || (h == other.g) || (h == other.h);
-        return cond1 && cond2 && cond3 && cond4 && cond5 && cond6 && cond7 && cond8;
+        std::array<int, 8> arr1 = { a, b, c, d, e, f, g, h };
+        std::array<int, 8> arr2 = { other.a, other.b, other.c, other.d, other.e, other.f, other.g, other.h };
+        std::sort(arr1.begin(), arr1.end());
+        std::sort(arr2.begin(), arr2.end());
+
+        for (int i = 0; i < 8; i++) {
+            if (arr1[i] != arr2[i]) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     void computeCenter(const Vertex &v0, const Vertex &v1, const Vertex &v2, const Vertex &v3,
@@ -235,9 +253,9 @@ namespace std {
     struct hash<TriangleFace> {
         size_t operator()(const TriangleFace &f) const {
             size_t hash1 = std::hash<int>()(f.a);
-            size_t hash2 = std::hash<int>()(f.b) >> 1;
-            size_t hash3 = std::hash<int>()(f.c) << 1;
-            return hash1 ^ hash2 ^ hash3;
+            size_t hash2 = std::hash<int>()(f.b);
+            size_t hash3 = std::hash<int>()(f.c);
+            return ((hash1 ^ hash2) >> 1) ^ hash3;
         }
     };
 
@@ -245,9 +263,9 @@ namespace std {
     struct hash<QuadrangleFace> {
         size_t operator()(const QuadrangleFace &f) const {
             size_t hash1 = std::hash<int>()(f.a);
-            size_t hash2 = std::hash<int>()(f.b) >> 1;
-            size_t hash3 = std::hash<int>()(f.c) << 1;
-            size_t hash4 = std::hash<int>()(f.d) >> 1;
+            size_t hash2 = std::hash<int>()(f.b);
+            size_t hash3 = std::hash<int>()(f.c);
+            size_t hash4 = std::hash<int>()(f.d);
             return hash1 ^ hash2 ^ hash3 ^ hash4;
         }
     };
@@ -256,7 +274,7 @@ namespace std {
     struct hash<Edge> {
         size_t operator()(const Edge &e) const {
             size_t hash1 = std::hash<int>()(e.a);
-            size_t hash2 = std::hash<int>()(e.b) >> 1;
+            size_t hash2 = std::hash<int>()(e.b);
             return hash1 ^ hash2;
         }
     };

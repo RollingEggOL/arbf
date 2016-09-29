@@ -100,12 +100,14 @@ int main(int argc, const char **argv) {
             printf("\tnv = %d, nf = %d\n", mesh->getNumVertices(), mesh->getNumQuadrangleFaces());
             break;
     }
+
 //    MeshFactoryWithEnlargedBoundingBox boundingBoxFactory;
 //    boundingBoxFactory.setMeshFactory(std::move(meshFactory));
 //    unique_ptr<Mesh> mesh = boundingBoxFactory.createMeshFromFile(file_path.c_str());
 
     unique_ptr<BasisFunction> basisFunction(new MQBasisFunction);
-    span = clock() - start;total += span;
+    span = clock() - start;
+    total += span;
     printf("Reading mesh ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
 
     ARBFInterpolator interpolator;

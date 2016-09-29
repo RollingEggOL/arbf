@@ -5,7 +5,7 @@
     },
     "run_configs": {
         "project_dir": "/Users/keliu/Projects/arbf/arbf-test/arbf-test",
-        "mesh_filename": "hexahedron.hex",
+        "mesh_filename": "hexahedron3.hex",
         "mesh_type": "Hexahedron",
         "problem_dim": 3,
         "evaluation_points": 2097152,
