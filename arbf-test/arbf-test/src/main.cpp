@@ -58,9 +58,12 @@ int main(int argc, const char **argv) {
     runConfigs = root["run_configs"];
     string projDir = runConfigs.get("project_dir", "").asString();
     string meshFilename = runConfigs.get("mesh_filename", "").asString();
+    string disturbanceDirectionFilename = runConfigs.get("disturbance_direction_filename", "").asString();
     Config::neighborhoodSize = runConfigs.get("neighborhood_size", 1).asInt();
     Config::problemDim = runConfigs.get("problem_dim", 2).asInt();
     Config::numEvalPoints = runConfigs.get("evaluation_points", 1000).asUInt();
+    Config::disturbanceFactor = runConfigs.get("disturbance_factor", 0.0f).asFloat();
+    Config::isDisturbanceEnabled = runConfigs.get("enable_disturbance", false).asBool();
     Config::isDebugEnabled = runConfigs.get("enable_debug", false).asBool();
     Config::setInterpolationScheme(runConfigs.get("interpolation_scheme", "global").asString());
     Config::setMeshType(runConfigs.get("mesh_type", "Tetrahedron").asString());
@@ -80,9 +83,9 @@ int main(int argc, const char **argv) {
     }
 
     clock_t start, span, total;
-    
-    // read mesh
     start = total = clock();
+
+    // read mesh
     string file_path = projDir + "/data/" + meshFilename;
 //    unique_ptr<MeshFactory> meshFactory(new TriMeshFactory());
 
@@ -114,26 +117,64 @@ int main(int argc, const char **argv) {
     interpolator.setMesh(mesh.get());
     interpolator.setBasisFunction(basisFunction.get());
     
-	// find neighboring vertices for each vertex and
-    // neighboring faces for each face (center)
-    if (Config::interpolationScheme == Config::InterpolationSchemes::local) {
+	// find neighboring vertices for each vertex and neighboring faces for each face (center)
+    start = clock();
+    unique_ptr<MeshNeighborhood> neighbor1Ring(new OneRingMeshNeighborhood());
+    neighbor1Ring->computeVertexNeighbors(mesh.get());
+    neighbor1Ring->computeFaceNeighbors(mesh.get());
+    span = clock() - start;
+    total += span;
+    printf("Finding 1-ring neighborhood ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
+
+    if (Config::neighborhoodSize == 2) {
         start = clock();
-        unique_ptr<MeshNeighborhood> neighbor1Ring(new OneRingMeshNeighborhood());
-        neighbor1Ring->computeVertexNeighbors(mesh.get());
-        neighbor1Ring->computeFaceNeighbors(mesh.get());
+        unique_ptr<MeshNeighborhood> neighbor2Ring(new TwoRingMeshNeighborhood(move(neighbor1Ring).get()));
+        neighbor2Ring->computeVertexNeighbors(mesh.get());
+        neighbor2Ring->computeFaceNeighbors(mesh.get());
         span = clock() - start;
         total += span;
-        printf("Finding 1-ring neighborhood ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
+        printf("Finding 2-ring neighborhood ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
+    }
 
-        if (Config::neighborhoodSize == 2) {
-            start = clock();
-            unique_ptr<MeshNeighborhood> neighbor2Ring(new TwoRingMeshNeighborhood(move(neighbor1Ring).get()));
-            neighbor2Ring->computeVertexNeighbors(mesh.get());
-            neighbor2Ring->computeFaceNeighbors(mesh.get());
-            span = clock() - start;
-            total += span;
-            printf("Finding 2-ring neighborhood ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
+    // make disturbance for all vertices in mesh
+    if (Config::isDisturbanceEnabled) {
+        start = clock();
+        // read directions
+        DirectionSamplings dirs(string(projDir + "/" + disturbanceDirectionFilename).c_str());
+        // start disturbance
+        auto vertices = mesh->getVertices();
+        auto vv = neighbor1Ring->getVertexToVertexNeighborhood();
+        srand(time(NULL));
+
+        for (unsigned v = 0; v < mesh->getNumVertices(); v++) {
+            double p0[] = { vertices[v].x, vertices[v].y, vertices[v].z }; // current vertex
+            auto nb = vv[v]; // neighbors for vertex v
+
+            // compute average distance of 1-ring neighboring vertices
+            double sum = 0, dist = 0;
+            for (auto it = nb.begin(); it != nb.end(); it++) {
+                double p1[] = { vertices[*it].x, vertices[*it].y, vertices[*it].z };
+                sum += interpolator.computeDistance(p0, p1);
+            }
+            dist = sum / nb.size();
+
+            // get random direction
+            int r = rand() % dirs.getNumDirections();
+            auto dir = dirs[r];
+            p0[0] += Config::disturbanceFactor * dist * dir[0];
+            p0[1] += Config::disturbanceFactor * dist * dir[1];
+            p0[2] += Config::disturbanceFactor * dist * dir[2];
+            Vertex vertex(vertices[v]);
+            vertex.x = p0[0];
+            vertex.y = p0[1];
+            vertex.z = p0[2];
+            mesh->updateVertexAt(v, vertex);
         }
+
+        mesh->update();
+        span = clock() - start;
+        total += span;
+        printf("Add disturbance to mesh ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
     }
     
     // compute metrics

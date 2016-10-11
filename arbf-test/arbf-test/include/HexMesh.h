@@ -19,10 +19,8 @@ public:
     void setNumHexahedrons(unsigned value);
     const std::vector<Hexahedron> &getHexahedrons() const;
     void addHexahedron(const Hexahedron &hexahedron);
-    virtual unsigned getNumTriangleFaces() const;
-    virtual const std::unordered_set<TriangleFace> &getTriangleFaces() const;
-    virtual const std::vector<TriangleFace> getTriangleFacesAsList() const;
     virtual void exportToFile(const char *filename);
+    virtual void update();
 
 private:
     std::vector<Hexahedron> m_hexahedrons; // hexahedrons

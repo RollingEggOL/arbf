@@ -16,10 +16,8 @@ public:
     TetMesh(const TetMesh &other);
     virtual ~TetMesh();
     TetMesh &operator=(const TetMesh &other);
-    virtual unsigned getNumQuadrangleFaces() const;
-    virtual const std::unordered_set<QuadrangleFace> &getQuadrangleFaces() const;
-    virtual const std::vector<QuadrangleFace> getQuadrangleFacesAsList() const;
     virtual void exportToFile(const char *filename);
+    virtual void update();
     unsigned getNumTetrahedrons() const;
     void setNumTetrahedrons(unsigned value);
     const std::vector<Tetrahedron> &getTetrahedrons() const;

@@ -13,7 +13,8 @@
 #include "../include/Common.h"
 #include "../include/Mesh.h"
 
-Mesh::Mesh(): m_nv(0), m_nft(0), m_nfq(0), m_ne(0),
+Mesh::Mesh(): m_vertices(), m_triangleFaces(), m_quadrangleFaces(), m_edges(),
+              m_nv(0), m_nft(0), m_nfq(0), m_ne(0),
               m_minX(std::numeric_limits<double>::max()), m_maxX(std::numeric_limits<double>::lowest()),
               m_minY(std::numeric_limits<double>::max()), m_maxY(std::numeric_limits<double>::lowest()),
               m_minZ(std::numeric_limits<double>::max()), m_maxZ(std::numeric_limits<double>::lowest()) {
@@ -81,6 +82,14 @@ const std::vector<Vertex> &Mesh::getVertices() const {
     return m_vertices;
 }
 
+const std::unordered_set<Edge> &Mesh::getEdges() const {
+    return m_edges;
+}
+
+const std::vector<Edge> Mesh::getEdgesAsList() const {
+    return std::vector<Edge>(m_edges.begin(), m_edges.end());
+}
+
 const std::unordered_set<TriangleFace> &Mesh::getTriangleFaces() const {
     return m_triangleFaces;
 }
@@ -97,12 +106,72 @@ const std::vector<QuadrangleFace> Mesh::getQuadrangleFacesAsList() const {
     return std::vector<QuadrangleFace>(m_quadrangleFaces.begin(), m_quadrangleFaces.end());
 }
 
-const std::unordered_set<Edge> &Mesh::getEdges() const {
-    return m_edges;
-}
+void Mesh::update() {
+    std::array<double, 2> minMaxX = {
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::lowest()
+    };
+    std::array<double, 2> minMaxY = {
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::lowest()
+    };
+    std::array<double, 2> minMaxZ = {
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::lowest()
+    };
 
-const std::vector<Edge> Mesh::getEdgesAsList() const {
-    return std::vector<Edge>(m_edges.begin(), m_edges.end());
+    for (auto &vertex: m_vertices) {
+        if (vertex.x < minMaxX[0]) {
+            minMaxX[0] = vertex.x;
+        }
+
+        if (vertex.x > minMaxX[1]) {
+            minMaxX[1] = vertex.x;
+        }
+
+        if (vertex.y < minMaxY[0]) {
+            minMaxY[0] = vertex.y;
+        }
+
+        if (vertex.y > minMaxY[1]) {
+            minMaxY[1] = vertex.y;
+        }
+
+        if (vertex.z < minMaxZ[0]) {
+            minMaxZ[0] = vertex.z;
+        }
+
+        if (vertex.z > minMaxZ[1]) {
+            minMaxZ[1] = vertex.z;
+        }
+    }
+    setMinMaxX(minMaxX);
+    setMinMaxY(minMaxY);
+    setMinMaxZ(minMaxZ);
+
+    auto triangleFaces = getTriangleFacesAsList();
+    m_triangleFaces.clear();
+    for (auto &triFace: triangleFaces) {
+        TriangleFace f(triFace.a, triFace.b, triFace.c, triFace.intensity);
+        f.computeCenter(m_vertices[f.a], m_vertices[f.b], m_vertices[f.c]);
+        addTriangleFace(f);
+    }
+
+    auto quadrangleFaces = getQuadrangleFacesAsList();
+    m_quadrangleFaces.clear();
+    for (auto &quadFace: quadrangleFaces) {
+        QuadrangleFace f(quadFace.a, quadFace.b, quadFace.c, quadFace.d, quadFace.intensity);
+        f.computeCenter(m_vertices[f.a], m_vertices[f.b], m_vertices[f.c], m_vertices[f.d]);
+        addQuadrangleFace(f);
+    }
+
+    auto edges = getEdgesAsList();
+    m_edges.clear();
+    for (auto &edge: edges) {
+        Edge e(edge.a, edge.b, edge.intensity);
+        e.computeCenter(m_vertices[e.a], m_vertices[e.b]);
+        addEdge(e);
+    }
 }
 
 double Mesh::getMinX() const {
@@ -210,6 +279,10 @@ void Mesh::addQuadrangleFace(const QuadrangleFace &face) {
 
 void Mesh::addEdge(const Edge &edge) {
     m_edges.insert(edge);
+}
+
+void Mesh::updateVertexAt(unsigned i, const Vertex &vertex) {
+    m_vertices[i] = vertex;
 }
 
 void Mesh::exportToFile(const char *filename) {

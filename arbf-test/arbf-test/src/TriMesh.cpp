@@ -54,18 +54,6 @@ void TriMesh::exportToFile(const char *filename) {
     fclose(fout);
 }
 
-unsigned TriMesh::getNumQuadrangleFaces() const {
-    throw new NotImplementedException();
-}
-
-const std::unordered_set<QuadrangleFace> &TriMesh::getQuadrangleFaces() const {
-    throw new NotImplementedException();
-}
-
-const std::vector<QuadrangleFace> TriMesh::getQuadrangleFacesAsList() const {
-    throw new NotImplementedException();
-}
-
 void TriMesh::deform() {
     srand(static_cast<unsigned int>(time(NULL)));
 //    double t1 = 0.5, t2 = 0.5, t3 = 0.5;

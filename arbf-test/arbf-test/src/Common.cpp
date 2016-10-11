@@ -2,23 +2,106 @@
 // Created by Ke Liu on 10/4/16.
 //
 
+#include <cstdlib>
 #include "../include/Config.h"
 #include "../include/Common.h"
 
+DirectionSamplings::DirectionSamplings() {}
+
+DirectionSamplings::DirectionSamplings(const char *filename) {
+    this->importFromFile(filename);
+}
+
+DirectionSamplings::DirectionSamplings(const DirectionSamplings &other) {
+    this->m_data.clear();
+
+    for (auto dir: other.m_data) {
+        this->m_data.push_back(dir);
+    }
+}
+
+DirectionSamplings &DirectionSamplings::operator=(const DirectionSamplings &other) {
+    if (this == &other) {
+        return *this;
+    }
+
+    this->m_data.clear();
+
+    for (auto dir: other.m_data) {
+        this->m_data.push_back(dir);
+    }
+
+    return *this;
+}
+
+std::array<float, 3> DirectionSamplings::operator[](unsigned index) const {
+    return this->m_data[index];
+};
+
+void DirectionSamplings::importFromFile(const char *filename) {
+    printf("Reading direction sampling file %s\n", filename);
+    int num;
+    float x, y, z;
+    char line[256];
+    FILE *fin = nullptr;
+
+    if ((fin = fopen(filename, "r")) == nullptr) {
+        fprintf(stderr, "Error: Reading direction sampling file %s \n", filename);
+        exit(EXIT_FAILURE);
+    }
+
+    fscanf(fin, "%d\n", &num);
+
+    for (int i = 0; i < num; i++) {
+        fscanf(fin, "%f %f %f\n", &x, &y, &z);
+        m_data.push_back({ x, y, z });
+    }
+
+    fclose(fin);
+    printf("%d direction samplings read.\n", num);
+}
+
+std::vector<std::array<float, 3>> DirectionSamplings::getDirections() const {
+    return m_data;
+}
+
+unsigned DirectionSamplings::getNumDirections() const {
+    return m_data.size();
+}
+
 Vertex::Vertex():
         x(0.0), y(0.0), z(0.0), intensity(1.0),
-        eigVec1(std::array<double, 3>({1, 0, 0})), eigVec2(std::array<double, 3>({0, 1, 0})),
-        eigVec3(std::array<double, 3>({0, 0, 1})) {
+        eigVec1({ 1, 0, 0 }),
+        eigVec2({ 0, 1, 0 }),
+        eigVec3({ 0, 0, 1 }) {
     // nothing here
 }
 
 Vertex::Vertex(double x, double y, double z, double intensity):
         x(x), y(y), z(z), intensity(intensity),
         eig1(0.0), eig2(0.0), eig3(0.0),
-        eigVec1(std::array<double, 3>({1, 0, 0})),
-        eigVec2(std::array<double, 3>({0, 1, 0})),
-        eigVec3(std::array<double, 3>({0, 0, 1})) {
+        eigVec1({ 1, 0, 0 }),
+        eigVec2({ 0, 1, 0 }),
+        eigVec3({ 0, 0, 1 }) {
     // nothing here
+}
+
+Vertex &Vertex::operator=(const Vertex &other) {
+    if (this == &other) {
+        return *this;
+    }
+
+    x = other.x;
+    y = other.y;
+    z = other.z;
+    intensity = other.intensity;
+    eig1 = other.eig1;
+    eig2 = other.eig2;
+    eig3 = other.eig3;
+    eigVec1 = other.eigVec1;
+    eigVec2 = other.eigVec2;
+    eigVec3 = other.eigVec3;
+    return *this;
 }
 
 bool Vertex::operator==(const Vertex &other) const {

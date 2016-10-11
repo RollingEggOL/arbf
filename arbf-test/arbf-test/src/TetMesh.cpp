@@ -74,14 +74,10 @@ void TetMesh::exportToFile(const char *filename) {
     fclose(fout);
 }
 
-unsigned TetMesh::getNumQuadrangleFaces() const {
-    throw new NotImplementedException();
-}
+void TetMesh::update() {
+    Mesh::update();
 
-const std::unordered_set<QuadrangleFace> &TetMesh::getQuadrangleFaces() const {
-    throw new NotImplementedException();
-}
-
-const std::vector<QuadrangleFace> TetMesh::getQuadrangleFacesAsList() const {
-    throw new NotImplementedException();
+    for (auto &tet: m_tetrahedrons) {
+        tet.computeCenter(m_vertices[tet.a], m_vertices[tet.b], m_vertices[tet.c], m_vertices[tet.d]);
+    }
 }

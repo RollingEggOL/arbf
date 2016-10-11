@@ -25,6 +25,8 @@ public:
 //    static bool isUsingISORBF; // if use ISO-RBF for eigenvalues
     static InterpolationSchemes interpolationScheme;
     static MeshType meshType;
+    static bool isDisturbanceEnabled; // if disturbance of vertices, face centers, cell centers enabled
+    static float disturbanceFactor; // disturbance factor, defaults to 0f
     static bool isDebugEnabled; // if printing out debug info
     static int problemDim; // model dimension
     static unsigned numEvalPoints; // # of evaluation points

@@ -6,6 +6,10 @@
 #include <set>
 #include <cstdlib>
 #include <cstdio>
+#include "../include/Mesh.h"
+#include "../include/TriMesh.h"
+#include "../include/TetMesh.h"
+#include "../include/HexMesh.h"
 #include "../include/MeshNeighborhood.h"
 
 // MeshNeighborhood implementations
@@ -19,21 +23,44 @@ void OneRingMeshNeighborhood::computeVertexNeighbors(const Mesh *mesh) {
     m_vv_1ring.resize(mesh->getNumVertices());
     m_vf_1ring.resize(mesh->getNumVertices());
 
-    // build 1-ring VERTEX <-> FACE mapping
-    auto faces = mesh->getTriangleFacesAsList();
-    for (int f = 0; f < mesh->getNumTriangleFaces(); ++f) {
-        m_vf_1ring[faces[f].a].push_back(f);
-        m_vf_1ring[faces[f].b].push_back(f);
-        m_vf_1ring[faces[f].c].push_back(f);
-    }
-
-    // find 1-ring VERTEX <-> VERTEX mapping
-    for (int v = 0; v < mesh->getNumVertices(); ++v) {
-        for (size_t j = 0; j < m_vf_1ring[v].size(); ++j) {
-            m_vv_1ring[v].insert(faces[m_vf_1ring[v][j]].a);
-            m_vv_1ring[v].insert(faces[m_vf_1ring[v][j]].b);
-            m_vv_1ring[v].insert(faces[m_vf_1ring[v][j]].c);
+    if (typeid(*mesh) == typeid(TriMesh) || typeid(*mesh) == typeid(TetMesh)) {
+        // build 1-ring VERTEX <-> FACE mapping
+        auto faces = mesh->getTriangleFacesAsList();
+        for (int f = 0; f < mesh->getNumTriangleFaces(); ++f) {
+            m_vf_1ring[faces[f].a].push_back(f);
+            m_vf_1ring[faces[f].b].push_back(f);
+            m_vf_1ring[faces[f].c].push_back(f);
         }
+
+        // find 1-ring VERTEX <-> VERTEX mapping
+        for (int v = 0; v < mesh->getNumVertices(); ++v) {
+            for (size_t j = 0; j < m_vf_1ring[v].size(); ++j) {
+                m_vv_1ring[v].insert(faces[m_vf_1ring[v][j]].a);
+                m_vv_1ring[v].insert(faces[m_vf_1ring[v][j]].b);
+                m_vv_1ring[v].insert(faces[m_vf_1ring[v][j]].c);
+            }
+        }
+    } else if (typeid(*mesh) == typeid(HexMesh)) {
+        // build 1-ring VERTEX <-> FACE mapping
+        auto faces = mesh->getQuadrangleFacesAsList();
+        for (int f = 0; f < mesh->getNumQuadrangleFaces(); ++f) {
+            m_vf_1ring[faces[f].a].push_back(f);
+            m_vf_1ring[faces[f].b].push_back(f);
+            m_vf_1ring[faces[f].c].push_back(f);
+            m_vf_1ring[faces[f].d].push_back(f);
+        }
+
+        // find 1-ring VERTEX <-> VERTEX mapping
+        for (int v = 0; v < mesh->getNumVertices(); ++v) {
+            for (size_t j = 0; j < m_vf_1ring[v].size(); ++j) {
+                m_vv_1ring[v].insert(faces[m_vf_1ring[v][j]].a);
+                m_vv_1ring[v].insert(faces[m_vf_1ring[v][j]].b);
+                m_vv_1ring[v].insert(faces[m_vf_1ring[v][j]].c);
+                m_vv_1ring[v].insert(faces[m_vf_1ring[v][j]].d);
+            }
+        }
+    } else {
+        // do nothing
     }
 
 //    if (Config::isPrintingDebugInfo) {
@@ -76,26 +103,57 @@ void OneRingMeshNeighborhood::computeVertexNeighbors(const Mesh *mesh) {
 }
 
 void OneRingMeshNeighborhood::computeFaceNeighbors(const Mesh *mesh) {
-    m_ff_1ring.resize(mesh->getNumTriangleFaces());
-    auto faces = mesh->getTriangleFacesAsList();
+    if (typeid(*mesh) == typeid(TriMesh) || typeid(*mesh) == typeid(TetMesh)) {
+        m_ff_1ring.resize(mesh->getNumTriangleFaces());
+        auto faces = mesh->getTriangleFacesAsList();
 
-    for (int f = 0; f < mesh->getNumTriangleFaces(); ++f) {
-        int a = faces[f].a;
-        int b = faces[f].b;
-        int c = faces[f].c;
+        for (int f = 0; f < mesh->getNumTriangleFaces(); ++f) {
+            int a = faces[f].a;
+            int b = faces[f].b;
+            int c = faces[f].c;
 
-        for (size_t j = 0; j < m_vf_1ring[a].size(); ++j) {
-            m_ff_1ring[f].insert(m_vf_1ring[a][j]);
+            for (size_t j = 0; j < m_vf_1ring[a].size(); ++j) {
+                m_ff_1ring[f].insert(m_vf_1ring[a][j]);
+            }
+
+            for (size_t j = 0; j < m_vf_1ring[b].size(); ++j) {
+                m_ff_1ring[f].insert(m_vf_1ring[b][j]);
+            }
+
+            for (size_t j = 0; j < m_vf_1ring[c].size(); ++j) {
+                m_ff_1ring[f].insert(m_vf_1ring[c][j]);
+            }
         }
+    } else if (typeid(*mesh) == typeid(HexMesh)) {
+        m_ff_1ring.resize(mesh->getNumQuadrangleFaces());
+        auto faces = mesh->getQuadrangleFacesAsList();
 
-        for (size_t j = 0; j < m_vf_1ring[b].size(); ++j) {
-            m_ff_1ring[f].insert(m_vf_1ring[b][j]);
-        }
+        for (int f = 0; f < mesh->getNumQuadrangleFaces(); ++f) {
+            int a = faces[f].a;
+            int b = faces[f].b;
+            int c = faces[f].c;
+            int d = faces[f].d;
 
-        for (size_t j = 0; j < m_vf_1ring[c].size(); ++j) {
-            m_ff_1ring[f].insert(m_vf_1ring[c][j]);
+            for (size_t j = 0; j < m_vf_1ring[a].size(); ++j) {
+                m_ff_1ring[f].insert(m_vf_1ring[a][j]);
+            }
+
+            for (size_t j = 0; j < m_vf_1ring[b].size(); ++j) {
+                m_ff_1ring[f].insert(m_vf_1ring[b][j]);
+            }
+
+            for (size_t j = 0; j < m_vf_1ring[c].size(); ++j) {
+                m_ff_1ring[f].insert(m_vf_1ring[c][j]);
+            }
+
+            for (size_t j = 0; j < m_vf_1ring[d].size(); ++j) {
+                m_ff_1ring[f].insert(m_vf_1ring[d][j]);
+            }
         }
+    } else {
+        // do nothing
     }
+
 
 //    if (Config::isPrintingDebugInfo) {
 //        string filename = string("DEBUG.ff_1ring.txt");
@@ -153,59 +211,130 @@ void TwoRingMeshNeighborhood::computeVertexNeighbors(const Mesh *mesh) {
 
     m_vv_2ring.resize(mesh->getNumVertices());
     m_vf_2ring.resize(mesh->getNumVertices());
-    auto faces = mesh->getTriangleFacesAsList();
 
-    // build 2-ring VERTEX <-> FACE mapping
-    m_vf_2ring = m_vf_1ring;
-    for (int i = 0; i < mesh->getNumTriangleFaces(); ++i) {
-        // 3 vertices of current face
-        int a = faces[i].a;
-        int b = faces[i].b;
-        int c = faces[i].c;
+    if (typeid(*mesh) == typeid(TriMesh) || typeid(*mesh) == typeid(TetMesh)) {
+        auto faces = mesh->getTriangleFacesAsList();
 
-        // neighboring vertices of 3 vertices
-        const std::set<int> &neib1 = m_vv_1ring[a];
-        const std::set<int> &neib2 = m_vv_1ring[b];
-        const std::set<int> &neib3 = m_vv_1ring[c];
+        // build 2-ring VERTEX <-> FACE mapping
+        m_vf_2ring = m_vf_1ring;
+        for (int i = 0; i < mesh->getNumTriangleFaces(); ++i) {
+            // 3 vertices of current face
+            int a = faces[i].a;
+            int b = faces[i].b;
+            int c = faces[i].c;
 
-        // go over each neighboring vertices set, check if current face is in
-        // the neighboring faces list
-        std::set<int>::const_iterator it;
+            // neighboring vertices of 3 vertices
+            const std::set<int> &neib1 = m_vv_1ring[a];
+            const std::set<int> &neib2 = m_vv_1ring[b];
+            const std::set<int> &neib3 = m_vv_1ring[c];
 
-        for (it = neib1.begin(); it != neib1.end(); ++it) {
-            std::vector<int> &neib_faces = m_vf_1ring[*it];
-            if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
-                // current face is not in the list, add it
-                m_vf_2ring[*it].push_back(i);
+            // go over each neighboring vertices set, check if current face is in
+            // the neighboring faces list
+            std::set<int>::const_iterator it;
+
+            for (it = neib1.begin(); it != neib1.end(); ++it) {
+                std::vector<int> &neib_faces = m_vf_1ring[*it];
+                if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
+                    // current face is not in the list, add it
+                    m_vf_2ring[*it].push_back(i);
+                }
+            }
+
+            for (it = neib2.begin(); it != neib2.end(); ++it) {
+                std::vector<int> &neib_faces = m_vf_1ring[*it];
+                if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
+                    // current face is not in the list, add it
+                    m_vf_2ring[*it].push_back(i);
+                }
+            }
+
+            for (it = neib3.begin(); it != neib3.end(); ++it) {
+                std::vector<int> &neib_faces = m_vf_1ring[*it];
+                if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
+                    // current face is not in the list, add it
+                    m_vf_2ring[*it].push_back(i);
+                }
             }
         }
 
-        for (it = neib2.begin(); it != neib2.end(); ++it) {
-            std::vector<int> &neib_faces = m_vf_1ring[*it];
-            if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
-                // current face is not in the list, add it
-                m_vf_2ring[*it].push_back(i);
+        // find 2-ring neighboring vertices
+        //    m_vv_2ring.assign(m_vv_1ring.begin(), m_vv_1ring.end());
+        m_vv_2ring = m_vv_1ring;
+        for (int i = 0; i < mesh->getNumVertices(); ++i) {
+            for (int j = 0; j < m_vf_2ring[i].size(); ++j) {
+                m_vv_2ring[i].insert(faces[m_vf_2ring[i][j]].a);
+                m_vv_2ring[i].insert(faces[m_vf_2ring[i][j]].b);
+                m_vv_2ring[i].insert(faces[m_vf_2ring[i][j]].c);
+            }
+        }
+    } else if (typeid(*mesh) == typeid(HexMesh)) {
+        auto faces = mesh->getQuadrangleFacesAsList();
+
+        // build 2-ring VERTEX <-> FACE mapping
+        m_vf_2ring = m_vf_1ring;
+        for (int i = 0; i < mesh->getNumQuadrangleFaces(); ++i) {
+            // 3 vertices of current face
+            int a = faces[i].a;
+            int b = faces[i].b;
+            int c = faces[i].c;
+            int d = faces[i].d;
+
+            // neighboring vertices of 3 vertices
+            const std::set<int> &neib1 = m_vv_1ring[a];
+            const std::set<int> &neib2 = m_vv_1ring[b];
+            const std::set<int> &neib3 = m_vv_1ring[c];
+            const std::set<int> &neib4 = m_vv_1ring[d];
+
+            // go over each neighboring vertices set, check if current face is in
+            // the neighboring faces list
+            std::set<int>::const_iterator it;
+
+            for (it = neib1.begin(); it != neib1.end(); ++it) {
+                std::vector<int> &neib_faces = m_vf_1ring[*it];
+                if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
+                    // current face is not in the list, add it
+                    m_vf_2ring[*it].push_back(i);
+                }
+            }
+
+            for (it = neib2.begin(); it != neib2.end(); ++it) {
+                std::vector<int> &neib_faces = m_vf_1ring[*it];
+                if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
+                    // current face is not in the list, add it
+                    m_vf_2ring[*it].push_back(i);
+                }
+            }
+
+            for (it = neib3.begin(); it != neib3.end(); ++it) {
+                std::vector<int> &neib_faces = m_vf_1ring[*it];
+                if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
+                    // current face is not in the list, add it
+                    m_vf_2ring[*it].push_back(i);
+                }
+            }
+
+            for (it = neib4.begin(); it != neib4.end(); ++it) {
+                std::vector<int> &neib_faces = m_vf_1ring[*it];
+                if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
+                    // current face is not in the list, add it
+                    m_vf_2ring[*it].push_back(i);
+                }
             }
         }
 
-        for (it = neib3.begin(); it != neib3.end(); ++it) {
-            std::vector<int> &neib_faces = m_vf_1ring[*it];
-            if (find(neib_faces.begin(), neib_faces.end(), i) == neib_faces.end()) {
-                // current face is not in the list, add it
-                m_vf_2ring[*it].push_back(i);
+        // find 2-ring neighboring vertices
+        //    m_vv_2ring.assign(m_vv_1ring.begin(), m_vv_1ring.end());
+        m_vv_2ring = m_vv_1ring;
+        for (int i = 0; i < mesh->getNumVertices(); ++i) {
+            for (int j = 0; j < m_vf_2ring[i].size(); ++j) {
+                m_vv_2ring[i].insert(faces[m_vf_2ring[i][j]].a);
+                m_vv_2ring[i].insert(faces[m_vf_2ring[i][j]].b);
+                m_vv_2ring[i].insert(faces[m_vf_2ring[i][j]].c);
+                m_vv_2ring[i].insert(faces[m_vf_2ring[i][j]].d);
             }
         }
-    }
-
-    // find 2-ring neighboring vertices
-//    m_vv_2ring.assign(m_vv_1ring.begin(), m_vv_1ring.end());
-    m_vv_2ring = m_vv_1ring;
-    for (int i = 0; i < mesh->getNumVertices(); ++i) {
-        for (int j = 0; j < m_vf_2ring[i].size(); ++j) {
-            m_vv_2ring[i].insert(faces[m_vf_2ring[i][j]].a);
-            m_vv_2ring[i].insert(faces[m_vf_2ring[i][j]].b);
-            m_vv_2ring[i].insert(faces[m_vf_2ring[i][j]].c);
-        }
+    } else {
+        // do nothing
     }
 
 //    if (Config::isPrintingDebugInfo) {
@@ -253,25 +382,55 @@ void TwoRingMeshNeighborhood::computeFaceNeighbors(const Mesh *mesh) {
         exit(EXIT_FAILURE);
     }
 
-    m_ff_2ring.resize(mesh->getNumTriangleFaces());
-    auto faces = mesh->getTriangleFacesAsList();
+    if (typeid(*mesh) == typeid(TriMesh) || typeid(*mesh) == typeid(TetMesh)) {
+        m_ff_2ring.resize(mesh->getNumTriangleFaces());
+        auto faces = mesh->getTriangleFacesAsList();
 
-    for (int f = 0; f < mesh->getNumTriangleFaces(); ++f) {
-        int a = faces[f].a;
-        int b = faces[f].b;
-        int c = faces[f].c;
+        for (int f = 0; f < mesh->getNumTriangleFaces(); ++f) {
+            int a = faces[f].a;
+            int b = faces[f].b;
+            int c = faces[f].c;
 
-        for (int j = 0; j < m_vf_2ring[a].size(); ++j) {
-            m_ff_2ring[f].insert(m_vf_2ring[a][j]);
+            for (int j = 0; j < m_vf_2ring[a].size(); ++j) {
+                m_ff_2ring[f].insert(m_vf_2ring[a][j]);
+            }
+
+            for (int j = 0; j < m_vf_2ring[b].size(); ++j) {
+                m_ff_2ring[f].insert(m_vf_2ring[b][j]);
+            }
+
+            for (int j = 0; j < m_vf_2ring[c].size(); ++j) {
+                m_ff_2ring[f].insert(m_vf_2ring[c][j]);
+            }
         }
+    } else if (typeid(*mesh) == typeid(HexMesh)) {
+        m_ff_2ring.resize(mesh->getNumQuadrangleFaces());
+        auto faces = mesh->getQuadrangleFacesAsList();
 
-        for (int j = 0; j < m_vf_2ring[b].size(); ++j) {
-            m_ff_2ring[f].insert(m_vf_2ring[b][j]);
-        }
+        for (int f = 0; f < mesh->getNumQuadrangleFaces(); ++f) {
+            int a = faces[f].a;
+            int b = faces[f].b;
+            int c = faces[f].c;
+            int d = faces[f].d;
 
-        for (int j = 0; j < m_vf_2ring[c].size(); ++j) {
-            m_ff_2ring[f].insert(m_vf_2ring[c][j]);
+            for (int j = 0; j < m_vf_2ring[a].size(); ++j) {
+                m_ff_2ring[f].insert(m_vf_2ring[a][j]);
+            }
+
+            for (int j = 0; j < m_vf_2ring[b].size(); ++j) {
+                m_ff_2ring[f].insert(m_vf_2ring[b][j]);
+            }
+
+            for (int j = 0; j < m_vf_2ring[c].size(); ++j) {
+                m_ff_2ring[f].insert(m_vf_2ring[c][j]);
+            }
+
+            for (int j = 0; j < m_vf_2ring[d].size(); ++j) {
+                m_ff_2ring[f].insert(m_vf_2ring[d][j]);
+            }
         }
+    } else {
+        // do nothing
     }
 
 //    if (Config::isPrintingDebugInfo) {

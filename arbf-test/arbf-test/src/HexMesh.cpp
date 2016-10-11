@@ -75,14 +75,11 @@ void HexMesh::exportToFile(const char *filename) {
     fclose(fout);
 }
 
-unsigned HexMesh::getNumTriangleFaces() const {
-    throw new NotImplementedException();
-}
+void HexMesh::update() {
+    Mesh::update();
 
-const std::unordered_set<TriangleFace> &HexMesh::getTriangleFaces() const {
-    throw new NotImplementedException();
-}
-
-const std::vector<TriangleFace> HexMesh::getTriangleFacesAsList() const {
-    throw new NotImplementedException();
+    for (auto &hex: m_hexahedrons) {
+        hex.computeCenter(m_vertices[hex.a], m_vertices[hex.b], m_vertices[hex.c], m_vertices[hex.d],
+                          m_vertices[hex.e], m_vertices[hex.f], m_vertices[hex.g], m_vertices[hex.h]);
+    }
 }

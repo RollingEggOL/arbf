@@ -44,6 +44,7 @@ public:
     void computeTetrahedronMetrics();
     void interpolate_global(unsigned numEvalPoints);
     void interpolate_local(unsigned numEvalPoints);
+    double computeDistance(const double *v0, const double *v1); // Euclidean distance
 
 private:
     Eigens2d computeEigens(const Eigen::Matrix2d &matrix);
@@ -60,7 +61,6 @@ private:
     bool m_isInHexahedron(const double *x, int hexahedronId);
     bool m_isInAnyTetrahedron(const double *x); // check if a point x is in any tetrahedron
     bool m_isInAnyHexahedron(const double *x);
-    double m_computeDistance(const double *v0, const double *v1); // Euclidean distance
     double m_computeDistance(const double *v0, const double *v1, const Eigen::Matrix3d& T); // distance of tensor
     double m_computeDistance(const double *x, const double *v0, const double *v1); // distance between point x and line segment [v0, v1]
     double m_computeDistance(const double *v0, const double *v1, const double *w0, const double *w1); // distance of line segment [v0, v1] and [w0, w1]

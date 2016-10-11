@@ -269,7 +269,7 @@ ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolateHexahedron3dG
                 p1[0] = vj.x;
                 p1[1] = vj.y;
                 p1[2] = vj.z;
-                double r = m_computeDistance(p0, p1);
+                double r = computeDistance(p0, p1);
                 m_distanceMatrix(i, j) = m_basis->phi(r, c1);
                 j++;
             } else if (j < (nv + nf)) {
@@ -277,7 +277,7 @@ ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolateHexahedron3dG
                 p1[0] = vj.x;
                 p1[1] = vj.y;
                 p1[2] = vj.z;
-                double r = m_computeDistance(p0, p1);
+                double r = computeDistance(p0, p1);
                 m_distanceMatrix(i, j) = m_basis->phi(r, c1);
                 j++;
             } else if (j < (nv + nf + nh)) {
@@ -285,7 +285,7 @@ ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolateHexahedron3dG
                 p1[0] = vj.x;
                 p1[1] = vj.y;
                 p1[2] = vj.z;
-                double r = m_computeDistance(p0, p1);
+                double r = computeDistance(p0, p1);
                 m_distanceMatrix(i, j) = m_basis->phi(r, c1);
                 j++;
             } else {
@@ -509,21 +509,21 @@ ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolateHexahedron3dG
                         p1[0] = vj.x;
                         p1[1] = vj.y;
                         p1[2] = vj.z;
-                        double r = m_computeDistance(p0, p1);
+                        double r = computeDistance(p0, p1);
                         intensity += (m_basis->phi(r, c1) * m_coeff(l++));
                     } else if (l < (nv + nf)) {
                         const Vertex &vj = faces[l - nv].center;
                         p1[0] = vj.x;
                         p1[1] = vj.y;
                         p1[2] = vj.z;
-                        double r = m_computeDistance(p0, p1);
+                        double r = computeDistance(p0, p1);
                         intensity += (m_basis->phi(r, c1) * m_coeff(l++));
                     } else if (l < (nv + nf + nh)) {
                         const Vertex &vj = mesh->getHexahedrons()[l - nv - nf].center;
                         p1[0] = vj.x;
                         p1[1] = vj.y;
                         p1[2] = vj.z;
-                        double r = m_computeDistance(p0, p1);
+                        double r = computeDistance(p0, p1);
                         intensity += (m_basis->phi(r, c1) * m_coeff(l++));
                     } else {
                         unsigned n = l - nv - nf - nh;
@@ -618,7 +618,7 @@ ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolate3dGlobal(unsi
                 p1[0] = vj.x;
                 p1[1] = vj.y;
                 p1[2] = vj.z;
-                double r = m_computeDistance(p0, p1);
+                double r = computeDistance(p0, p1);
                 m_distanceMatrix(i, j) = m_basis->phi(r, c1);
                 j++;
             } else if (j < (nv + nf)) {
@@ -626,7 +626,7 @@ ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolate3dGlobal(unsi
                 p1[0] = vj.x;
                 p1[1] = vj.y;
                 p1[2] = vj.z;
-                double r = m_computeDistance(p0, p1);
+                double r = computeDistance(p0, p1);
                 m_distanceMatrix(i, j) = m_basis->phi(r, c1);
                 j++;
             } else if (j < (nv + nf + nt)) {
@@ -634,7 +634,7 @@ ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolate3dGlobal(unsi
                 p1[0] = vj.x;
                 p1[1] = vj.y;
                 p1[2] = vj.z;
-                double r = m_computeDistance(p0, p1);
+                double r = computeDistance(p0, p1);
                 m_distanceMatrix(i, j) = m_basis->phi(r, c1);
                 j++;
             } else {
@@ -799,21 +799,21 @@ ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolate3dGlobal(unsi
                         p1[0] = vj.x;
                         p1[1] = vj.y;
                         p1[2] = vj.z;
-                        double r = m_computeDistance(p0, p1);
+                        double r = computeDistance(p0, p1);
                         intensity += (m_basis->phi(r, c1) * m_coeff(l++));
                     } else if (l < (nv + nf)) {
                         const Vertex &vj = faces[l - nv].center;
                         p1[0] = vj.x;
                         p1[1] = vj.y;
                         p1[2] = vj.z;
-                        double r = m_computeDistance(p0, p1);
+                        double r = computeDistance(p0, p1);
                         intensity += (m_basis->phi(r, c1) * m_coeff(l++));
                     } else if (l < (nv + nf + nt)) {
                         const Vertex &vj = mesh->getTetrahedrons()[l - nv - nf].center;
                         p1[0] = vj.x;
                         p1[1] = vj.y;
                         p1[2] = vj.z;
-                        double r = m_computeDistance(p0, p1);
+                        double r = computeDistance(p0, p1);
                         intensity += (m_basis->phi(r, c1) * m_coeff(l++));
                     } else {
                         unsigned n = l - nv - nf - nt;
@@ -1384,7 +1384,7 @@ bool ARBFInterpolator::m_isInTriangle(const double* x, int ta, int tb, int tc) {
     return (std::abs(area1+area2+area3-area) < Config::epsilon);
 }
 
-double ARBFInterpolator::m_computeDistance(const double *v0, const double *v1) {
+double ARBFInterpolator::computeDistance(const double *v0, const double *v1) {
     return std::sqrt(SQ(v1[0]-v0[0]) + SQ(v1[1]-v0[1]) + SQ(v1[2]-v0[2]));
 }
 
@@ -1398,9 +1398,9 @@ double ARBFInterpolator::m_computeDistance(const double *v0, const double *v1, c
 
 double ARBFInterpolator::m_computeDistance(const double *x, const double *v0, const double *v1) {
     double a, b, c;
-    a = m_computeDistance(v0, v1);
-    b = m_computeDistance(x, v0);
-    c = m_computeDistance(x, v1);
+    a = computeDistance(v0, v1);
+    b = computeDistance(x, v0);
+    c = computeDistance(x, v1);
 
     // [v0, v1] is not a line segment but a point
     if (a < Config::epsilon) {

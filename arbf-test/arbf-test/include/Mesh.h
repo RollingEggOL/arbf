@@ -20,19 +20,20 @@ public:
     Mesh(const Mesh &other);
     virtual ~Mesh();
     virtual void exportToFile(const char *filename);
-    virtual unsigned getNumTriangleFaces() const;
-    virtual unsigned getNumQuadrangleFaces() const;
-    virtual const std::unordered_set<TriangleFace> &getTriangleFaces() const;
-    virtual const std::vector<TriangleFace> getTriangleFacesAsList() const;
-    virtual const std::unordered_set<QuadrangleFace> &getQuadrangleFaces() const;
-    virtual const std::vector<QuadrangleFace> getQuadrangleFacesAsList() const;
+    virtual void update();
 
     Mesh &operator=(const Mesh &other);
     unsigned getNumVertices() const;
     unsigned getNumEdges() const;
+    unsigned getNumTriangleFaces() const;
+    unsigned getNumQuadrangleFaces() const;
     const std::vector<Vertex> &getVertices() const;
     const std::unordered_set<Edge> &getEdges() const;
     const std::vector<Edge> getEdgesAsList() const;
+    const std::unordered_set<TriangleFace> &getTriangleFaces() const;
+    const std::vector<TriangleFace> getTriangleFacesAsList() const;
+    const std::unordered_set<QuadrangleFace> &getQuadrangleFaces() const;
+    const std::vector<QuadrangleFace> getQuadrangleFacesAsList() const;
     double getMinX() const;
     double getMaxX() const;
     double getMinY() const;
@@ -59,6 +60,7 @@ public:
     void addTriangleFace(const TriangleFace &face);
     void addQuadrangleFace(const QuadrangleFace &face);
     void addEdge(const Edge &edge);
+    void updateVertexAt(unsigned i, const Vertex &vertex);
 
 protected:
     std::vector<Vertex> m_vertices; // vertices

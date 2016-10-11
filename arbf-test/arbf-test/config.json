@@ -7,10 +7,13 @@
         "project_dir": "/Users/keliu/Projects/arbf/arbf-test/arbf-test",
         "mesh_filename": "hexahedron3.hex",
         "mesh_type": "Hexahedron",
+        "enable_disturbance": true,
+        "disturbance_direction_filename": "spherical-sampling.txt",
+        "disturbance_factor": 0.1,
         "problem_dim": 3,
         "evaluation_points": 2097152,
         "interpolation_scheme": "global",
-        "neighborhood_size": 2,
+        "neighborhood_size": 1,
         "enable_debug": false
     }
 }

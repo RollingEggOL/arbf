@@ -12,15 +12,31 @@
 #include <string>
 #include <cmath>
 #include <array>
+#include <vector>
 #include <algorithm>
 #include <functional>
 #include <stdexcept>
 
 #define SQ(x) ((x) * (x))
 
+struct DirectionSamplings {
+    DirectionSamplings();
+    DirectionSamplings(const char *filename);
+    DirectionSamplings(const DirectionSamplings &other);
+    DirectionSamplings &operator=(const DirectionSamplings &other);
+    void importFromFile(const char *filename);
+    std::array<float, 3> operator[](unsigned index) const;
+    std::vector<std::array<float, 3>> getDirections() const;
+    unsigned getNumDirections() const;
+
+private:
+    std::vector<std::array<float, 3>> m_data; // spherical direction samplings
+};
+
 struct Vertex {
     Vertex();
     Vertex(double x, double y, double z, double intensity=1.0);
+    Vertex &operator=(const Vertex &other);
     bool operator==(const Vertex &other) const;
 
     double x;
