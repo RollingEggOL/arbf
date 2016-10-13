@@ -5,14 +5,15 @@
     },
     "run_configs": {
         "project_dir": "/Users/keliu/Projects/arbf/arbf-test/arbf-test",
-        "mesh_filename": "hexahedron3.hex",
+        "mesh_filename": "hexahedron2.hex",
         "mesh_type": "Hexahedron",
-        "enable_disturbance": true,
+        "enable_disturbance": false,
         "disturbance_direction_filename": "spherical-sampling.txt",
-        "disturbance_factor": 0.1,
+        "disturbance_factor": 0.2,
         "problem_dim": 3,
         "evaluation_points": 2097152,
         "interpolation_scheme": "global",
+        "basis_function_type": "IMQ",
         "neighborhood_size": 1,
         "enable_debug": false
     }

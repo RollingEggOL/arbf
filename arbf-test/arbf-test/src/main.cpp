@@ -66,6 +66,7 @@ int main(int argc, const char **argv) {
     Config::isDisturbanceEnabled = runConfigs.get("enable_disturbance", false).asBool();
     Config::isDebugEnabled = runConfigs.get("enable_debug", false).asBool();
     Config::setInterpolationScheme(runConfigs.get("interpolation_scheme", "global").asString());
+    Config::setBasisFunctionType(runConfigs.get("basis_function_type", "IMQ").asString());
     Config::setMeshType(runConfigs.get("mesh_type", "Tetrahedron").asString());
 
     constants = root["constants"] ;
@@ -103,15 +104,33 @@ int main(int argc, const char **argv) {
             printf("\tnv = %d, nf = %d\n", mesh->getNumVertices(), mesh->getNumQuadrangleFaces());
             break;
     }
-
 //    MeshFactoryWithEnlargedBoundingBox boundingBoxFactory;
 //    boundingBoxFactory.setMeshFactory(std::move(meshFactory));
 //    unique_ptr<Mesh> mesh = boundingBoxFactory.createMeshFromFile(file_path.c_str());
-
-    unique_ptr<BasisFunction> basisFunction(new MQBasisFunction);
     span = clock() - start;
     total += span;
     printf("Reading mesh ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
+
+    start = clock();
+    unique_ptr<BasisFunction> basisFunction(nullptr);
+    switch (Config::basisType) {
+        case Config::BasisFunctionType::MQ:
+            basisFunction = unique_ptr<BasisFunction>(new MQBasisFunction());
+            break;
+        case Config::BasisFunctionType::Gaussian:
+            basisFunction = unique_ptr<BasisFunction>(new GaussianBasisFunction());
+            break;
+        case Config::BasisFunctionType::TPS:
+            basisFunction = unique_ptr<BasisFunction>(new TPSBasisFunction());
+            break;
+        case Config::BasisFunctionType::IMQ:
+        default:
+            basisFunction = unique_ptr<BasisFunction>(new IMQBasisFunction());
+            break;
+    }
+    span = clock() - start;
+    total += span;
+    printf("Setting basis function ... %lf ms\n", (double) span * 1e3 / CLOCKS_PER_SEC);
 
     ARBFInterpolator interpolator;
     interpolator.setMesh(mesh.get());
@@ -186,7 +205,7 @@ int main(int argc, const char **argv) {
 
     // interpolate
     start = clock();
-    if (Config::interpolationScheme == Config::InterpolationSchemes::local) {
+    if (Config::interpolationScheme == Config::InterpolationScheme::local) {
         interpolator.interpolate_local(Config::numEvalPoints);
     } else {
         interpolator.interpolate_global(Config::numEvalPoints);

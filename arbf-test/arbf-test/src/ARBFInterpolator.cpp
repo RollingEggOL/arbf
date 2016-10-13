@@ -498,9 +498,9 @@ ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolateHexahedron3dG
         for (int j = 0; j < dimY; j++) {
             for (int i = 0; i < dimX; i++) {
                 p0[0] = x[i], p0[1] = y[j], p0[2] = z[k];
-                if (!m_isInAnyHexahedron(p0)) {
-                    continue;
-                }
+//                if (!m_isInAnyHexahedron(p0)) {
+//                    continue;
+//                }
 
                 double intensity = 0;
                 for (int l = 0; l < cols;) {
@@ -788,9 +788,9 @@ ARBFInterpolator::InterpolateResult ARBFInterpolator::m_interpolate3dGlobal(unsi
         for (int j = 0; j < dimY; j++) {
             for (int i = 0; i < dimX; i++) {
                 p0[0] = x[i], p0[1] = y[j], p0[2] = z[k];
-                if (!m_isInAnyTetrahedron(p0)) {
-                    continue;
-                }
+//                if (!m_isInAnyTetrahedron(p0)) {
+//                    continue;
+//                }
 
                 double intensity = 0;
                 for (int l = 0; l < cols;) {

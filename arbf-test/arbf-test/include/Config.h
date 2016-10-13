@@ -14,16 +14,19 @@
 
 class Config {
 public:
-    enum InterpolationSchemes { global, local };
+    enum BasisFunctionType { MQ, IMQ, Gaussian, TPS };
+    enum InterpolationScheme { global, local };
     enum MeshType { Tetrahedron, Hexahedron };
 
 public:
+    static void setBasisFunctionType(const std::string &basis);
     static void setInterpolationScheme(const std::string &scheme);
     static void setMeshType(const std::string &type);
 
     static int neighborhoodSize;
 //    static bool isUsingISORBF; // if use ISO-RBF for eigenvalues
-    static InterpolationSchemes interpolationScheme;
+    static BasisFunctionType basisType;
+    static InterpolationScheme interpolationScheme;
     static MeshType meshType;
     static bool isDisturbanceEnabled; // if disturbance of vertices, face centers, cell centers enabled
     static float disturbanceFactor; // disturbance factor, defaults to 0f
@@ -33,7 +36,8 @@ public:
     static double epsilon;
     static double c0; // C0 parameter used in paper
 private:
-    static std::map<std::string, InterpolationSchemes> schemeMap;
+    static std::map<std::string, BasisFunctionType> basisFunctionMap;
+    static std::map<std::string, InterpolationScheme> schemeMap;
     static std::map<std::string, MeshType> meshMap;
 };
 
